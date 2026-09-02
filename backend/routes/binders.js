@@ -135,12 +135,21 @@ function rowToBinder(row) {
   };
 }
 
-// GET /api/binders - list all binders with fill progress
+const countOwnedSlots = db.prepare(
+  `SELECT COUNT(*) AS c FROM binder_slots bs
+   WHERE bs.binder_id = ? AND EXISTS (SELECT 1 FROM collection_items ci WHERE ci.card_id = bs.card_id)`
+);
+
+// GET /api/binders - list all binders with progress. filledSlots = slots that
+// have a card *planned* for them (this binder's layout is that complete);
+// ownedSlots = of those, how many you actually have in your collection —
+// these are very different numbers and the UI must never conflate them.
 router.get('/', (req, res) => {
   const binders = db.prepare('SELECT * FROM binders ORDER BY updated_at DESC').all();
   const result = binders.map((b) => {
     const filledSlots = db.prepare('SELECT COUNT(*) AS c FROM binder_slots WHERE binder_id = ?').get(b.id).c;
-    return { ...rowToBinder(b), filledSlots };
+    const ownedSlots = countOwnedSlots.get(b.id).c;
+    return { ...rowToBinder(b), filledSlots, ownedSlots };
   });
   res.json(result);
 });

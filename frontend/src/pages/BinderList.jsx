@@ -52,7 +52,7 @@ export default function BinderList() {
 
       <div className="binder-grid">
         {binders.map((b) => {
-          const pct = b.totalSlots > 0 ? Math.round((b.filledSlots / b.totalSlots) * 100) : 0;
+          const ownedPct = b.totalSlots > 0 ? Math.round((b.ownedSlots / b.totalSlots) * 100) : 0;
           return (
             <Link to={`/binders/${b.id}`} key={b.id} className="binder-card">
               <div className="binder-card-icon">📔</div>
@@ -61,10 +61,13 @@ export default function BinderList() {
                 <div className="muted">
                   {b.sourceSetName ? `${b.sourceSetName} · ` : ''}
                   {b.sourcePokemonName ? `Every ${b.sourcePokemonName} card · ` : ''}
-                  {b.pageCount} page{b.pageCount === 1 ? '' : 's'} · {b.filledSlots}/{b.totalSlots} filled
+                  {b.pageCount} page{b.pageCount === 1 ? '' : 's'} · {b.filledSlots} planned
                 </div>
-                <div className="binder-progress-track">
-                  <div className="binder-progress-fill" style={{ width: `${pct}%` }} />
+                <div className="muted">
+                  {b.ownedSlots} owned ({ownedPct}%)
+                </div>
+                <div className="binder-progress-track" title={`${b.ownedSlots} of ${b.totalSlots} slots owned`}>
+                  <div className="binder-progress-fill" style={{ width: `${ownedPct}%` }} />
                 </div>
               </div>
               <button

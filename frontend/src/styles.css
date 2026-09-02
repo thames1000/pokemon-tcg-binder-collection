@@ -892,7 +892,7 @@ textarea {
 }
 
 .binder-progress-fill {
-  background: var(--primary);
+  background: var(--success);
   height: 100%;
 }
 

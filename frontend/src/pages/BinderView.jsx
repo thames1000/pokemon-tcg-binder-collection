@@ -58,6 +58,8 @@ export default function BinderView() {
   if (!binder) return null;
 
   const pageCount = binder.pageCount;
+  const ownedCount = binder.slots.filter((s) => s.owned).length;
+  const ownedPct = binder.totalSlots > 0 ? Math.round((ownedCount / binder.totalSlots) * 100) : 0;
   const frontStart = pageIndex * SLOTS_PER_PAGE;
   const backStart = frontStart + SLOTS_PER_SIDE;
   const frontPositions = Array.from({ length: SLOTS_PER_SIDE }, (_, i) => frontStart + i);
@@ -115,7 +117,10 @@ export default function BinderView() {
       <p className="page-subtitle">
         {binder.sourceSetName ? `${binder.sourceSetName} · ` : ''}
         {binder.sourcePokemonName ? `Every ${binder.sourcePokemonName} card · ` : ''}
-        {binder.slots.length}/{binder.totalSlots} slots filled
+        {binder.slots.length}/{binder.totalSlots} slots planned ·{' '}
+        <span className={ownedCount > 0 ? 'success-text' : ''}>
+          {ownedCount} owned ({ownedPct}%)
+        </span>
       </p>
 
       <div className="binder-page-nav">
