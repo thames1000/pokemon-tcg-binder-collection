@@ -135,10 +135,23 @@ function rowToBinder(row) {
   };
 }
 
+// A slot counts as owned if you have that card at all when the slot has no
+// specific planned variant, or — when it does (e.g. a rarity-rules-expanded
+// "Reverse Holofoil" slot) — only if you own *that* variant. Otherwise adding
+// just the Normal print would incorrectly light up the Reverse Holofoil slot
+// of the same card too.
 const countOwnedSlots = db.prepare(
   `SELECT COUNT(*) AS c FROM binder_slots bs
-   WHERE bs.binder_id = ? AND EXISTS (SELECT 1 FROM collection_items ci WHERE ci.card_id = bs.card_id)`
+   WHERE bs.binder_id = ? AND EXISTS (
+     SELECT 1 FROM collection_items ci
+     WHERE ci.card_id = bs.card_id AND (bs.variant IS NULL OR ci.variant = bs.variant)
+   )`
 );
+
+const ownedStmt = db.prepare(
+  `SELECT 1 FROM collection_items WHERE card_id = ? AND (? IS NULL OR variant = ?) LIMIT 1`
+);
+const isSlotOwned = (cardId, variant) => !!ownedStmt.get(cardId, variant ?? null, variant ?? null);
 
 // GET /api/binders - list all binders with progress. filledSlots = slots that
 // have a card *planned* for them (this binder's layout is that complete);
@@ -204,7 +217,7 @@ router.get('/:id', (req, res) => {
     card: s.card_snapshot ? JSON.parse(s.card_snapshot) : null,
     variant: s.variant,
     notes: s.notes,
-    owned: !!db.prepare('SELECT 1 FROM collection_items WHERE card_id = ? LIMIT 1').get(s.card_id),
+    owned: isSlotOwned(s.card_id, s.variant),
   }));
 
   res.json({ ...rowToBinder(binder), slots });
@@ -341,8 +354,7 @@ router.put('/:id/slots/:position', (req, res) => {
   ).run(req.params.id, position, cardId, card ? JSON.stringify(card) : null, variant ?? null, notes ?? null);
   db.prepare("UPDATE binders SET updated_at = datetime('now') WHERE id = ?").run(req.params.id);
 
-  const owned = !!db.prepare('SELECT 1 FROM collection_items WHERE card_id = ? LIMIT 1').get(cardId);
-  res.json({ position, cardId, card, variant: variant ?? null, notes: notes ?? null, owned });
+  res.json({ position, cardId, card, variant: variant ?? null, notes: notes ?? null, owned: isSlotOwned(cardId, variant) });
 });
 
 // DELETE /api/binders/:id/slots/:position - clear a slot
