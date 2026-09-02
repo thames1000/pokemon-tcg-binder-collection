@@ -54,4 +54,14 @@ export const api = {
   updateWishlistItem: (id, payload) =>
     request(`/wishlist/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
   removeFromWishlist: (id) => request(`/wishlist/${id}`, { method: 'DELETE' }),
+
+  getBinders: () => request('/binders'),
+  getBinder: (id) => request(`/binders/${id}`),
+  createBinder: (payload) => request('/binders', { method: 'POST', body: JSON.stringify(payload) }),
+  updateBinder: (id, payload) => request(`/binders/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+  deleteBinder: (id) => request(`/binders/${id}`, { method: 'DELETE' }),
+  setBinderSlot: (binderId, position, payload) =>
+    request(`/binders/${binderId}/slots/${position}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  clearBinderSlot: (binderId, position) =>
+    request(`/binders/${binderId}/slots/${position}`, { method: 'DELETE' }),
 };

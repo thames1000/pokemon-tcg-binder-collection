@@ -65,6 +65,35 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_wishlist_card_id ON wishlist_items(card_id);
+
+  -- A planned physical binder: pageCount pages, each page = a front side + a back
+  -- side of a 3x3 (9-pocket) sheet, so 18 slots per page. sourceSetId/sourceSetName
+  -- are set when the binder was auto-filled from a full set; null for a manual binder.
+  CREATE TABLE IF NOT EXISTS binders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    source_set_id TEXT,
+    source_set_name TEXT,
+    page_count INTEGER NOT NULL DEFAULT 4,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  -- One row per occupied slot. position is 0-indexed across the whole binder:
+  -- page*18 + side*9 + (row*3+col), side 0=front/1=back. Empty slots simply have
+  -- no row — never materialized, computed by the frontend from pageCount.
+  CREATE TABLE IF NOT EXISTS binder_slots (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    binder_id INTEGER NOT NULL,
+    position INTEGER NOT NULL,
+    card_id TEXT NOT NULL,
+    card_snapshot TEXT,
+    notes TEXT,
+    added_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(binder_id, position)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_binder_slots_binder ON binder_slots(binder_id);
 `);
 
 export default db;

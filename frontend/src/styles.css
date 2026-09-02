@@ -841,3 +841,228 @@ textarea {
   border-top: 1px solid var(--border);
   font-size: 1.1rem;
 }
+
+/* Binders — list */
+.binder-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.binder-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  box-shadow: var(--shadow);
+  text-decoration: none;
+  color: inherit;
+  position: relative;
+  transition: transform 0.1s ease;
+}
+
+.binder-card:hover {
+  transform: translateY(-2px);
+}
+
+.binder-card-icon {
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.binder-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.binder-card-name {
+  font-weight: 700;
+  margin-bottom: 0.15rem;
+}
+
+.binder-progress-track {
+  background: var(--bg);
+  border-radius: 4px;
+  height: 6px;
+  margin-top: 0.5rem;
+  overflow: hidden;
+}
+
+.binder-progress-fill {
+  background: var(--primary);
+  height: 100%;
+}
+
+.binder-card-remove {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  opacity: 0;
+  transition: opacity 0.1s ease;
+}
+
+.binder-card:hover .binder-card-remove {
+  opacity: 1;
+}
+
+/* Binders — new binder modal */
+.binder-mode-toggle {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-mode {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.btn-mode.active {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 6%, var(--surface));
+}
+
+/* Binders — detail view */
+.binder-back-link {
+  display: inline-block;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
+.binder-back-link:hover {
+  color: var(--primary);
+}
+
+.binder-name-input {
+  font-size: 1.6rem;
+  font-weight: 700;
+  border: none;
+  border-bottom: 2px solid var(--primary);
+  padding: 0;
+  background: transparent;
+  font-family: inherit;
+}
+
+.binder-page-nav {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.binder-page-nav button {
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.binder-page-nav button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.binder-spread {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+@media (max-width: 700px) {
+  .binder-spread {
+    grid-template-columns: 1fr;
+  }
+}
+
+.binder-side {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  box-shadow: var(--shadow);
+}
+
+.binder-side-label {
+  font-weight: 700;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+  text-align: center;
+}
+
+.binder-side-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+.binder-slot {
+  aspect-ratio: 5 / 7;
+  border-radius: 6px;
+  border: 1px dashed var(--border);
+  background: var(--bg);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.binder-slot-filled {
+  border-style: solid;
+  border-color: var(--border);
+  background: var(--surface);
+}
+
+.binder-slot-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.binder-slot-plus {
+  color: var(--text-muted);
+  font-size: 1.3rem;
+  font-weight: 300;
+}
+
+.binder-slot-owned {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  background: var(--success);
+  color: white;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  font-size: 0.65rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.binder-search-grid {
+  margin-top: 1rem;
+  max-height: 420px;
+  overflow-y: auto;
+}

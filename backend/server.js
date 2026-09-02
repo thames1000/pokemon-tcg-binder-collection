@@ -4,6 +4,7 @@ import cors from 'cors';
 import cardsRouter from './routes/cards.js';
 import collectionRouter from './routes/collection.js';
 import wishlistRouter from './routes/wishlist.js';
+import bindersRouter from './routes/binders.js';
 import { warmSetsCache } from './pokemonApi.js';
 
 const app = express();
@@ -16,6 +17,7 @@ app.get('/api/health', (req, res) => res.json({ ok: true }));
 app.use('/api/cards', cardsRouter);
 app.use('/api/collection', collectionRouter);
 app.use('/api/wishlist', wishlistRouter);
+app.use('/api/binders', bindersRouter);
 
 app.use((err, req, res, next) => {
   console.error(err);

@@ -18,6 +18,9 @@ no subscription.
   to or below it are flagged when you check the page (not a push notification — see below).
 - **CSV Import/Export** — back up or migrate your whole collection as a spreadsheet. Export
   includes a `cardId` column, so re-importing your own export is an exact, lossless round trip.
+- **Binders** — plan where cards go in a physical 9-pocket binder: a 3×3 front + 3×3 back per
+  page, flip through page by page. Auto-fill an entire binder from a set (sorted by card
+  number) or build one manually, slot by slot. Slots show whether you already own that card.
 
 ## Stack
 
@@ -71,6 +74,9 @@ match, the card just shows "No price data available" — never a fabricated pric
 - `value_snapshots` — one row per calendar day, recorded automatically whenever the app
   computes your collection's totals. This is what powers the Analytics value-over-time chart —
   history builds up from normal use, no separate job required.
+- `binders` / `binder_slots` — a binder is `pageCount` pages × 18 slots (3×3 front + 3×3 back).
+  `binder_slots` has one row per *occupied* slot only — position `page*18 + side*9 + (row*3+col)`
+  (side 0=front, 1=back); empty slots simply have no row.
 
 ## API
 
@@ -91,6 +97,13 @@ match, the card just shows "No price data available" — never a fabricated pric
 | POST | `/api/wishlist` | Add a card to your wishlist |
 | PATCH | `/api/wishlist/:id` | Update target price/notes |
 | DELETE | `/api/wishlist/:id` | Remove a card from your wishlist |
+| GET | `/api/binders` | List binders with fill progress |
+| GET | `/api/binders/:id` | One binder with every filled slot |
+| POST | `/api/binders` | Create — `{ name, mode: 'manual', pageCount? }` or `{ name, mode: 'set', setId }` |
+| PATCH | `/api/binders/:id` | Rename and/or resize (grow/shrink page count) |
+| DELETE | `/api/binders/:id` | Delete a binder |
+| PUT | `/api/binders/:id/slots/:position` | Place/replace a card in one slot |
+| DELETE | `/api/binders/:id/slots/:position` | Clear a slot |
 
 ### CSV import format
 

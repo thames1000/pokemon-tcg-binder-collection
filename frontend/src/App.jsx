@@ -6,6 +6,8 @@ import Collection from './pages/Collection.jsx';
 import PriceLookup from './pages/PriceLookup.jsx';
 import Analytics from './pages/Analytics.jsx';
 import Wishlist from './pages/Wishlist.jsx';
+import BinderList from './pages/BinderList.jsx';
+import BinderView from './pages/BinderView.jsx';
 import { api } from './api.js';
 
 export default function App() {
@@ -37,6 +39,8 @@ export default function App() {
           <Route path="/price-lookup" element={<PriceLookup onCollectionChanged={refreshValue} />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/wishlist" element={<Wishlist />} />
+          <Route path="/binders" element={<BinderList />} />
+          <Route path="/binders/:id" element={<BinderView />} />
         </Routes>
       </main>
     </div>
