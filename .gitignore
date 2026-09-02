@@ -1,0 +1,11 @@
+node_modules/
+dist/
+backend/data/
+.DS_Store
+*.log
+
+# Secrets — never commit real env files, only the .example templates.
+.env
+.env.*
+!.env.example
+!.env.*.example
