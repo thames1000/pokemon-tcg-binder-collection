@@ -123,6 +123,23 @@ export default function BinderView() {
         </span>
       </p>
 
+      {binder.estimate && (
+        <div className="summary-cards">
+          <div className="summary-card">
+            <div className="summary-label">Already have</div>
+            <div className="summary-value">${binder.estimate.ownedValue.toFixed(2)}</div>
+          </div>
+          <div className="summary-card">
+            <div className="summary-label">Est. cost to complete</div>
+            <div className="summary-value">${binder.estimate.remainingCost.toFixed(2)}</div>
+            <div className="muted" style={{ fontSize: '0.72rem', marginTop: '0.2rem' }}>
+              {binder.estimate.pricedRemaining} priced
+              {binder.estimate.unpricedRemaining > 0 && `, ${binder.estimate.unpricedRemaining} no price data`}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="binder-page-nav">
         <button disabled={pageIndex <= 0} onClick={() => setPageIndex((p) => p - 1)}>
           ← Prev page

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import db from '../db.js';
 import { searchCards, fetchFromApi, getApiCache, setApiCache } from '../pokemonApi.js';
+import { cardMarketPrice } from '../pricing.js';
 
 const router = Router();
 
@@ -153,6 +154,47 @@ const ownedStmt = db.prepare(
 );
 const isSlotOwned = (cardId, variant) => !!ownedStmt.get(cardId, variant ?? null, variant ?? null);
 
+const cardCacheStmt = db.prepare('SELECT data FROM card_cache WHERE id = ?');
+// Prefer freshly-cached card data (which gets refreshed periodically / on
+// "Refresh price") over the snapshot frozen at the moment a slot was filled,
+// same as the collection page does — a binder built weeks ago shouldn't quote
+// a price from weeks ago when a live one is available.
+function latestCardData(cardId, fallbackSnapshot) {
+  const cached = cardCacheStmt.get(cardId);
+  return cached ? JSON.parse(cached.data) : fallbackSnapshot;
+}
+
+// Estimated cost to finish a binder: sum of current market price across every
+// *unowned* slot that has price data, plus how many slots couldn't be priced
+// (so the UI can be honest that the total is a floor, not the whole picture).
+function computeEstimate(binderId) {
+  const slotRows = db.prepare('SELECT card_id, card_snapshot, variant FROM binder_slots WHERE binder_id = ?').all(binderId);
+  let remainingCost = 0;
+  let pricedRemaining = 0;
+  let unpricedRemaining = 0;
+  let ownedValue = 0;
+  for (const s of slotRows) {
+    const snapshot = s.card_snapshot ? JSON.parse(s.card_snapshot) : null;
+    const card = latestCardData(s.card_id, snapshot);
+    const price = cardMarketPrice(card, s.variant);
+    const owned = isSlotOwned(s.card_id, s.variant);
+    if (owned) {
+      if (price) ownedValue += price.amount;
+    } else if (price) {
+      remainingCost += price.amount;
+      pricedRemaining++;
+    } else {
+      unpricedRemaining++;
+    }
+  }
+  return {
+    remainingCost: +remainingCost.toFixed(2),
+    pricedRemaining,
+    unpricedRemaining,
+    ownedValue: +ownedValue.toFixed(2),
+  };
+}
+
 // GET /api/binders - list all binders with progress. filledSlots = slots that
 // have a card *planned* for them (this binder's layout is that complete);
 // ownedSlots = of those, how many you actually have in your collection —
@@ -162,7 +204,7 @@ router.get('/', (req, res) => {
   const result = binders.map((b) => {
     const filledSlots = db.prepare('SELECT COUNT(*) AS c FROM binder_slots WHERE binder_id = ?').get(b.id).c;
     const ownedSlots = countOwnedSlots.get(b.id).c;
-    return { ...rowToBinder(b), filledSlots, ownedSlots };
+    return { ...rowToBinder(b), filledSlots, ownedSlots, estimate: computeEstimate(b.id) };
   });
   res.json(result);
 });
@@ -211,16 +253,21 @@ router.get('/:id', (req, res) => {
   if (!binder) return res.status(404).json({ error: 'Not found' });
 
   const slotRows = db.prepare('SELECT * FROM binder_slots WHERE binder_id = ?').all(req.params.id);
-  const slots = slotRows.map((s) => ({
-    position: s.position,
-    cardId: s.card_id,
-    card: s.card_snapshot ? JSON.parse(s.card_snapshot) : null,
-    variant: s.variant,
-    notes: s.notes,
-    owned: isSlotOwned(s.card_id, s.variant),
-  }));
+  const slots = slotRows.map((s) => {
+    const snapshot = s.card_snapshot ? JSON.parse(s.card_snapshot) : null;
+    const card = latestCardData(s.card_id, snapshot);
+    return {
+      position: s.position,
+      cardId: s.card_id,
+      card,
+      variant: s.variant,
+      notes: s.notes,
+      owned: isSlotOwned(s.card_id, s.variant),
+      currentPrice: cardMarketPrice(card, s.variant),
+    };
+  });
 
-  res.json({ ...rowToBinder(binder), slots });
+  res.json({ ...rowToBinder(binder), slots, estimate: computeEstimate(req.params.id) });
 });
 
 function insertSourcedBinder({ name, sourceSetId, sourceSetName, sourcePokemonName, placements }) {

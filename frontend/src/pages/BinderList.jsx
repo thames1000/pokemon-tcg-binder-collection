@@ -65,6 +65,7 @@ export default function BinderList() {
                 </div>
                 <div className="muted">
                   {b.ownedSlots} owned ({ownedPct}%)
+                  {b.estimate && b.estimate.remainingCost > 0 && ` · ~$${b.estimate.remainingCost.toFixed(2)} to complete`}
                 </div>
                 <div className="binder-progress-track" title={`${b.ownedSlots} of ${b.totalSlots} slots owned`}>
                   <div className="binder-progress-fill" style={{ width: `${ownedPct}%` }} />

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { api } from '../api.js';
 import CardTile from './CardTile.jsx';
+import CardPriceTable from './CardPriceTable.jsx';
 import AddToCollectionForm from './AddToCollectionForm.jsx';
 import { useCardSearch } from '../hooks/useCardSearch.js';
 import { VARIANT_OPTIONS } from '../pricing.js';
@@ -11,6 +12,7 @@ export default function BinderSlotModal({ binderId, position, slot, onClose, onC
   const [error, setError] = useState(null);
   const [variant, setVariant] = useState('');
   const [added, setAdded] = useState(false);
+  const [viewCard, setViewCard] = useState(slot?.card || null);
 
   const {
     name, setName, setId, setSetId, sets, cards, page, setPage,
@@ -52,24 +54,32 @@ export default function BinderSlotModal({ binderId, position, slot, onClose, onC
           ×
         </button>
 
-        {mode === 'view' && slot?.card && (
+        {mode === 'view' && viewCard && (
           <div className="modal-body">
             <div className="modal-image">
-              {slot.card.images?.large ? (
-                <img src={slot.card.images.large} alt={slot.card.name} />
+              {viewCard.images?.large ? (
+                <img src={viewCard.images.large} alt={viewCard.name} />
               ) : (
                 <div className="card-tile-placeholder">No image</div>
               )}
             </div>
             <div className="modal-details">
-              <h2>{slot.card.name}</h2>
+              <h2>{viewCard.name}</h2>
               <p className="modal-subtitle">
-                {slot.card.set?.name} · #{slot.card.number} · {slot.card.rarity || 'Unknown rarity'}
+                {viewCard.set?.name} · #{viewCard.number} · {viewCard.rarity || 'Unknown rarity'}
                 {slot.variant && ` · ${slot.variant}`}
               </p>
               <p className={slot.owned ? 'success-text' : 'muted'}>
                 {slot.owned ? '✓ In your collection' : 'Not in your collection yet'}
               </p>
+
+              <CardPriceTable
+                card={viewCard}
+                onCardUpdated={(fresh) => {
+                  setViewCard(fresh);
+                  onChanged?.();
+                }}
+              />
 
               {error && <p className="error-text">{error}</p>}
 
@@ -90,19 +100,19 @@ export default function BinderSlotModal({ binderId, position, slot, onClose, onC
           </div>
         )}
 
-        {mode === 'add-to-collection' && slot?.card && (
+        {mode === 'add-to-collection' && viewCard && (
           <div className="modal-body">
             <div className="modal-image">
-              {slot.card.images?.large ? (
-                <img src={slot.card.images.large} alt={slot.card.name} />
+              {viewCard.images?.large ? (
+                <img src={viewCard.images.large} alt={viewCard.name} />
               ) : (
                 <div className="card-tile-placeholder">No image</div>
               )}
             </div>
             <div className="modal-details">
-              <h2>{slot.card.name}</h2>
+              <h2>{viewCard.name}</h2>
               <p className="modal-subtitle">
-                {slot.card.set?.name} · #{slot.card.number} · {slot.card.rarity || 'Unknown rarity'}
+                {viewCard.set?.name} · #{viewCard.number} · {viewCard.rarity || 'Unknown rarity'}
               </p>
 
               {added ? (
@@ -114,7 +124,7 @@ export default function BinderSlotModal({ binderId, position, slot, onClose, onC
                 </>
               ) : (
                 <AddToCollectionForm
-                  card={slot.card}
+                  card={viewCard}
                   initialVariant={slot.variant || undefined}
                   onAdded={() => {
                     setAdded(true);

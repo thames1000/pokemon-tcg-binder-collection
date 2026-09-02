@@ -28,7 +28,13 @@ no subscription.
   (excluded by default for a set, included by default for a Pokémon, since promos are often
   exactly what a Pokémon-focused binder is chasing). Cards you already own show full color;
   cards you don't are darkened/desaturated at a glance (the same convention Holodex uses) —
-  click any card to jump straight to "Add to Collection".
+  click any card to jump straight to "Add to Collection". Ownership matches on the slot's
+  planned variant when it has one (e.g. owning the Normal print doesn't light up the
+  Reverse Holofoil slot of the same card) — a slot with no variant set matches any copy you
+  own. Every binder also shows an estimated cost to complete: current market price summed
+  across every unowned, priced slot (from live-cached prices, not a stale snapshot from
+  when the binder was built), alongside what you've already got and how many slots simply
+  have no price data yet — never silently reported as $0.
 
 ## Stack
 
@@ -108,7 +114,7 @@ match, the card just shows "No price data available" — never a fabricated pric
 | GET | `/api/binders` | List binders with fill progress |
 | GET | `/api/binders/set-preview?setId=` | Rarity breakdown for a set (builds the rules checklist) |
 | GET | `/api/binders/pokemon-preview?name=` | Rarity breakdown for every card of one Pokémon |
-| GET | `/api/binders/:id` | One binder with every filled slot |
+| GET | `/api/binders/:id` | One binder with every filled slot, each priced, plus a completion cost estimate |
 | POST | `/api/binders` | Create — `{ name, mode: 'manual', pageCount? }`, `{ name, mode: 'set', setId, excludePromos?, rarityRules? }`, or `{ name, mode: 'pokemon', pokemonName, excludePromos?, rarityRules? }` |
 | PATCH | `/api/binders/:id` | Rename and/or resize (grow/shrink page count) |
 | DELETE | `/api/binders/:id` | Delete a binder |
