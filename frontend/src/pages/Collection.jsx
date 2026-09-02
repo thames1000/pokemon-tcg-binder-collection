@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api } from '../api.js';
+import ImportCsvModal from '../components/ImportCsvModal.jsx';
 
 const CONDITIONS = ['Mint', 'Near Mint', 'Lightly Played', 'Moderately Played', 'Heavily Played', 'Damaged'];
 
@@ -9,6 +10,21 @@ function CollectionRow({ item, onChanged }) {
   const [condition, setCondition] = useState(item.condition);
   const [notes, setNotes] = useState(item.notes || '');
   const [saving, setSaving] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState(null);
+
+  async function refreshPrice() {
+    setRefreshing(true);
+    setRefreshError(null);
+    try {
+      await api.refreshCardPrice(item.cardId);
+      onChanged();
+    } catch (err) {
+      setRefreshError(err.message);
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   async function save() {
     setSaving(true);
@@ -67,7 +83,21 @@ function CollectionRow({ item, onChanged }) {
           item.quantity
         )}
       </td>
-      <td>{item.currentPrice ? `$${item.currentPrice.amount.toFixed(2)}` : '—'}</td>
+      <td>
+        <div className="price-cell">
+          <span>{item.currentPrice ? `$${item.currentPrice.amount.toFixed(2)}` : '—'}</span>
+          <button
+            type="button"
+            className="btn-icon"
+            title="Refresh price"
+            onClick={refreshPrice}
+            disabled={refreshing}
+          >
+            {refreshing ? '…' : '↻'}
+          </button>
+        </div>
+        {refreshError && <div className="error-text error-text-small">{refreshError}</div>}
+      </td>
       <td className="col-value">{item.lineValue != null ? `$${item.lineValue.toFixed(2)}` : '—'}</td>
       <td>
         {editing ? (
@@ -136,9 +166,44 @@ export default function Collection({ refreshKey, onCollectionChanged }) {
     onCollectionChanged?.();
   }
 
+  const [showImport, setShowImport] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState(null);
+
+  async function handleExport() {
+    setExporting(true);
+    setExportError(null);
+    try {
+      const blob = await api.exportCollectionCsv();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `pokemon-collection-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setExportError(err.message);
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <div className="page">
-      <h1>My Collection</h1>
+      <div className="page-header-row">
+        <h1>My Collection</h1>
+        <div className="page-header-actions">
+          <button type="button" className="btn-small" onClick={handleExport} disabled={exporting}>
+            {exporting ? 'Exporting…' : '⭳ Export CSV'}
+          </button>
+          <button type="button" className="btn-small" onClick={() => setShowImport(true)}>
+            ⭱ Import CSV
+          </button>
+        </div>
+      </div>
+      {exportError && <p className="error-text">{exportError}</p>}
 
       {summary && (
         <div className="summary-cards">
@@ -193,6 +258,13 @@ export default function Collection({ refreshKey, onCollectionChanged }) {
             </tbody>
           </table>
         </div>
+      )}
+
+      {showImport && (
+        <ImportCsvModal
+          onClose={() => setShowImport(false)}
+          onImported={handleChanged}
+        />
       )}
     </div>
   );

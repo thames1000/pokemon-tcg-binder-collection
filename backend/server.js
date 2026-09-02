@@ -1,8 +1,10 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import cardsRouter, { warmSetsCache } from './routes/cards.js';
+import cardsRouter from './routes/cards.js';
 import collectionRouter from './routes/collection.js';
+import wishlistRouter from './routes/wishlist.js';
+import { warmSetsCache } from './pokemonApi.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -13,6 +15,7 @@ app.use(express.json());
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 app.use('/api/cards', cardsRouter);
 app.use('/api/collection', collectionRouter);
+app.use('/api/wishlist', wishlistRouter);
 
 app.use((err, req, res, next) => {
   console.error(err);

@@ -2,8 +2,10 @@ import { useState } from 'react';
 import CardPriceTable from './CardPriceTable.jsx';
 import AddToCollectionForm from './AddToCollectionForm.jsx';
 
-export default function AddToCollectionModal({ card: initialCard, onClose, onAdded }) {
+export default function PriceLookupModal({ card: initialCard, onClose, onAdded }) {
   const [card, setCard] = useState(initialCard);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [justAdded, setJustAdded] = useState(false);
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -28,13 +30,21 @@ export default function AddToCollectionModal({ card: initialCard, onClose, onAdd
 
             <CardPriceTable card={card} onCardUpdated={setCard} />
 
-            <AddToCollectionForm
-              card={card}
-              onAdded={() => {
-                onAdded?.();
-                onClose();
-              }}
-            />
+            {justAdded ? (
+              <p className="success-text">Added to your collection.</p>
+            ) : showAddForm ? (
+              <AddToCollectionForm
+                card={card}
+                onAdded={() => {
+                  onAdded?.();
+                  setJustAdded(true);
+                }}
+              />
+            ) : (
+              <button type="button" className="btn-primary" onClick={() => setShowAddForm(true)}>
+                + Add to Collection
+              </button>
+            )}
           </div>
         </div>
       </div>

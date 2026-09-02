@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import CardTile from '../components/CardTile.jsx';
-import AddToCollectionModal from '../components/AddToCollectionModal.jsx';
+import PriceLookupModal from '../components/PriceLookupModal.jsx';
 import { useCardSearch } from '../hooks/useCardSearch.js';
 
-export default function Library({ onCollectionChanged }) {
+export default function PriceLookup({ onCollectionChanged }) {
   const {
     name,
     setName,
@@ -24,8 +24,10 @@ export default function Library({ onCollectionChanged }) {
 
   return (
     <div className="page">
-      <h1>Library</h1>
-      <p className="page-subtitle">Browse every Pokémon TCG card and add what you own to your collection.</p>
+      <h1>Price Lookup</h1>
+      <p className="page-subtitle">
+        Check current TCGplayer &amp; Cardmarket prices for any card — no need to add it to your collection.
+      </p>
 
       <form className="search-bar" onSubmit={handleSearchSubmit}>
         <input
@@ -43,7 +45,7 @@ export default function Library({ onCollectionChanged }) {
           ))}
         </select>
         <button type="submit" className="btn-primary">
-          Search
+          Look Up Price
         </button>
       </form>
 
@@ -82,7 +84,7 @@ export default function Library({ onCollectionChanged }) {
       )}
 
       {selectedCard && (
-        <AddToCollectionModal
+        <PriceLookupModal
           card={selectedCard}
           onClose={() => setSelectedCard(null)}
           onAdded={onCollectionChanged}

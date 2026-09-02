@@ -3,6 +3,9 @@ import { Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar.jsx';
 import Library from './pages/Library.jsx';
 import Collection from './pages/Collection.jsx';
+import PriceLookup from './pages/PriceLookup.jsx';
+import Analytics from './pages/Analytics.jsx';
+import Wishlist from './pages/Wishlist.jsx';
 import { api } from './api.js';
 
 export default function App() {
@@ -31,6 +34,9 @@ export default function App() {
             path="/collection"
             element={<Collection refreshKey={refreshKey} onCollectionChanged={refreshValue} />}
           />
+          <Route path="/price-lookup" element={<PriceLookup onCollectionChanged={refreshValue} />} />
+          <Route path="/analytics" element={<Analytics />} />
+          <Route path="/wishlist" element={<Wishlist />} />
         </Routes>
       </main>
     </div>

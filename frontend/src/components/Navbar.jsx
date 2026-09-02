@@ -15,6 +15,15 @@ export default function Navbar({ totalValue }) {
           <NavLink to="/collection" className={({ isActive }) => (isActive ? 'active' : '')}>
             My Collection
           </NavLink>
+          <NavLink to="/price-lookup" className={({ isActive }) => (isActive ? 'active' : '')}>
+            Price Lookup
+          </NavLink>
+          <NavLink to="/analytics" className={({ isActive }) => (isActive ? 'active' : '')}>
+            Analytics
+          </NavLink>
+          <NavLink to="/wishlist" className={({ isActive }) => (isActive ? 'active' : '')}>
+            Wishlist
+          </NavLink>
         </nav>
         {totalValue != null && (
           <div className="value-badge">

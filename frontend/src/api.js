@@ -29,13 +29,29 @@ export const api = {
     return request(`/cards/search?${params.toString()}`);
   },
   getCard: (id) => request(`/cards/${id}`),
+  refreshCardPrice: (id) => request(`/cards/${id}?force=true`),
   getSets: () => request('/cards/sets'),
 
   getCollection: () => request('/collection'),
   getCollectionValue: () => request('/collection/value'),
+  getCollectionAnalytics: () => request('/collection/analytics'),
   addToCollection: (payload) =>
     request('/collection', { method: 'POST', body: JSON.stringify(payload) }),
   updateCollectionItem: (id, payload) =>
     request(`/collection/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
   removeFromCollection: (id) => request(`/collection/${id}`, { method: 'DELETE' }),
+
+  async exportCollectionCsv() {
+    const res = await fetch(`${BASE}/collection/export`);
+    if (!res.ok) throw new Error(`Export failed (${res.status})`);
+    return res.blob();
+  },
+  importCollectionCsv: (csvText) =>
+    request('/collection/import', { method: 'POST', body: JSON.stringify({ csv: csvText }) }),
+
+  getWishlist: () => request('/wishlist'),
+  addToWishlist: (payload) => request('/wishlist', { method: 'POST', body: JSON.stringify(payload) }),
+  updateWishlistItem: (id, payload) =>
+    request(`/wishlist/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+  removeFromWishlist: (id) => request(`/wishlist/${id}`, { method: 'DELETE' }),
 };

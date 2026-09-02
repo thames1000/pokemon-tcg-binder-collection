@@ -36,5 +36,10 @@ export function cardMarketPrice(card, variant) {
     return { amount: cm.averageSellPrice, currency: 'EUR', source: 'Cardmarket', variant: 'average' };
   }
 
+  // pokemontcg.io has no price data of its own for this card (common for very
+  // recently released sets) — fall back to whatever was found on TCGdex, if
+  // anything, when the card was fetched. See pokemonApi.js / tcgdexApi.js.
+  if (card.priceFallback) return card.priceFallback;
+
   return null;
 }
