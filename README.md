@@ -19,7 +19,8 @@ no subscription.
 - **CSV Import/Export** — back up or migrate your whole collection as a spreadsheet. Export
   includes a `cardId` column, so re-importing your own export is an exact, lossless round trip.
 - **Binders** — plan where cards go in a physical 9-pocket binder: a 3×3 front + 3×3 back per
-  page, flip through page by page. Auto-fill an entire binder three ways: from a set (sorted
+  page, either one page at a time or (a toggle, remembered per browser) scrolled continuously
+  through the whole binder. Auto-fill an entire binder three ways: from a set (sorted
   by card number), from every card of one Pokémon across every set ever printed (e.g.
   "Charizard" — VMAX/ex/GX/Dark/Shining/tag-team variants and all, sorted oldest-first by
   release date), or build one manually, slot by slot. Both auto-fill modes share a per-rarity

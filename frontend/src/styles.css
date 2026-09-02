@@ -1023,7 +1023,7 @@ textarea {
   flex-wrap: wrap;
 }
 
-.binder-page-nav button {
+.binder-page-nav > button {
   padding: 0.4rem 0.8rem;
   border-radius: 6px;
   border: 1px solid var(--border);
@@ -1032,9 +1032,28 @@ textarea {
   font-size: 0.85rem;
 }
 
-.binder-page-nav button:disabled {
+.binder-page-nav > button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.binder-view-toggle {
+  display: flex;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+
+.binder-scroll-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.binder-scroll-page-label {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
 }
 
 .binder-spread {
