@@ -21,13 +21,29 @@ export function cardMarketPrice(card, variant) {
     if (key && tcg[key]?.market != null) {
       return { amount: tcg[key].market, currency: 'USD', source: 'TCGplayer', variant: key };
     }
-    // fall back to whatever bucket exists
-    const firstKey = Object.keys(tcg).find((k) => tcg[k]?.market != null);
-    if (firstKey) {
-      return { amount: tcg[firstKey].market, currency: 'USD', source: 'TCGplayer', variant: firstKey };
+    if (!variant) {
+      // No specific variant requested (e.g. a plain browsing price badge) —
+      // any available bucket is a fair "best guess" to show.
+      const firstKey = Object.keys(tcg).find((k) => tcg[k]?.market != null);
+      if (firstKey) {
+        return { amount: tcg[firstKey].market, currency: 'USD', source: 'TCGplayer', variant: firstKey };
+      }
+      return null;
     }
+    // A specific variant was requested, and TCGplayer has real data for this
+    // card — just not that print. TCGplayer's bucket keys are exactly the print
+    // treatments that were actually made (e.g. Base Set genuinely has no
+    // "reverseHolofoil" bucket because reverse holos weren't introduced until
+    // years later), so this is authoritative: that print doesn't exist. Don't
+    // fall through to Cardmarket/TCGdex for a substitute — they wouldn't have a
+    // genuine variant-specific price for a print that was never made either.
+    return null;
   }
 
+  // TCGplayer has *no* data at all for this card — a total data gap (common for
+  // very recently released sets), not evidence this specific print doesn't
+  // exist — so a general fallback price is still worth showing here, even for a
+  // specific-variant request.
   const cm = card.cardmarket?.prices;
   if (cm?.trendPrice != null) {
     return { amount: cm.trendPrice, currency: 'EUR', source: 'Cardmarket', variant: 'trend' };
@@ -36,9 +52,7 @@ export function cardMarketPrice(card, variant) {
     return { amount: cm.averageSellPrice, currency: 'EUR', source: 'Cardmarket', variant: 'average' };
   }
 
-  // pokemontcg.io has no price data of its own for this card (common for very
-  // recently released sets) — fall back to whatever was found on TCGdex, if
-  // anything, when the card was fetched. See pokemonApi.js / tcgdexApi.js.
+  // See pokemonApi.js / tcgdexApi.js — the TCGdex fallback price, if any was found.
   if (card.priceFallback) return card.priceFallback;
 
   return null;
