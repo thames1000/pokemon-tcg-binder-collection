@@ -1097,6 +1097,21 @@ textarea {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: filter 0.1s ease;
+}
+
+/* Owned vs. unowned — darkened/desaturated when you don't have the card yet,
+   full color once you do (the same at-a-glance convention Holodex uses). */
+.binder-slot-owned-no .binder-slot-image {
+  filter: grayscale(65%) brightness(0.5);
+}
+
+.binder-slot-owned-no:hover .binder-slot-image {
+  filter: grayscale(40%) brightness(0.65);
+}
+
+.binder-slot-owned-yes .binder-slot-image {
+  filter: none;
 }
 
 .binder-slot-plus {

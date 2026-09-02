@@ -22,8 +22,9 @@ no subscription.
   page, flip through page by page. Auto-fill an entire binder from a set (sorted by card
   number), with a per-rarity rules checklist — e.g. give Common/Uncommon/Rare 2 slots each
   (Normal + Reverse Holofoil) while higher rarities get 1 (already a single foil-only print),
-  and optionally exclude promo-rarity cards — or build one manually, slot by slot. Slots show
-  whether you already own that card.
+  and optionally exclude promo-rarity cards — or build one manually, slot by slot. Cards you
+  already own show full color; cards you don't are darkened/desaturated at a glance (the same
+  convention Holodex uses) — click any card to jump straight to "Add to Collection".
 
 ## Stack
 

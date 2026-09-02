@@ -4,9 +4,9 @@ import { tcgplayerVariants, VARIANT_OPTIONS } from '../pricing.js';
 
 const CONDITIONS = ['Mint', 'Near Mint', 'Lightly Played', 'Moderately Played', 'Heavily Played', 'Damaged'];
 
-export default function AddToCollectionForm({ card, onAdded, submitLabel = 'Add to Collection' }) {
+export default function AddToCollectionForm({ card, onAdded, submitLabel = 'Add to Collection', initialVariant }) {
   const variants = tcgplayerVariants(card);
-  const defaultVariant = variants[0]?.label || VARIANT_OPTIONS[0];
+  const defaultVariant = initialVariant || variants[0]?.label || VARIANT_OPTIONS[0];
 
   const [quantity, setQuantity] = useState(1);
   const [condition, setCondition] = useState('Near Mint');

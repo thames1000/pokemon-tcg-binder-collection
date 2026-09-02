@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { api } from '../api.js';
 import CardTile from './CardTile.jsx';
+import AddToCollectionForm from './AddToCollectionForm.jsx';
 import { useCardSearch } from '../hooks/useCardSearch.js';
 import { VARIANT_OPTIONS } from '../pricing.js';
 
 export default function BinderSlotModal({ binderId, position, slot, onClose, onChanged }) {
-  const [mode, setMode] = useState(slot ? 'view' : 'search'); // 'view' | 'search'
+  const [mode, setMode] = useState(slot ? 'view' : 'search'); // 'view' | 'search' | 'add-to-collection'
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [variant, setVariant] = useState('');
+  const [added, setAdded] = useState(false);
 
   const {
     name, setName, setId, setSetId, sets, cards, page, setPage,
@@ -72,13 +74,60 @@ export default function BinderSlotModal({ binderId, position, slot, onClose, onC
               {error && <p className="error-text">{error}</p>}
 
               <div className="form-row" style={{ marginTop: '1rem' }}>
-                <button type="button" className="btn-primary" onClick={() => setMode('search')} disabled={saving}>
+                {!slot.owned && (
+                  <button type="button" className="btn-primary" onClick={() => setMode('add-to-collection')} disabled={saving}>
+                    + Add to Collection
+                  </button>
+                )}
+                <button type="button" className={slot.owned ? 'btn-primary' : 'btn-small'} onClick={() => setMode('search')} disabled={saving}>
                   Replace
                 </button>
                 <button type="button" className="btn-small btn-danger" onClick={remove} disabled={saving}>
                   {saving ? 'Removing…' : 'Remove from slot'}
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {mode === 'add-to-collection' && slot?.card && (
+          <div className="modal-body">
+            <div className="modal-image">
+              {slot.card.images?.large ? (
+                <img src={slot.card.images.large} alt={slot.card.name} />
+              ) : (
+                <div className="card-tile-placeholder">No image</div>
+              )}
+            </div>
+            <div className="modal-details">
+              <h2>{slot.card.name}</h2>
+              <p className="modal-subtitle">
+                {slot.card.set?.name} · #{slot.card.number} · {slot.card.rarity || 'Unknown rarity'}
+              </p>
+
+              {added ? (
+                <>
+                  <p className="success-text">Added to your collection.</p>
+                  <button type="button" className="btn-primary" onClick={onClose}>
+                    Done
+                  </button>
+                </>
+              ) : (
+                <AddToCollectionForm
+                  card={slot.card}
+                  initialVariant={slot.variant || undefined}
+                  onAdded={() => {
+                    setAdded(true);
+                    onChanged?.();
+                  }}
+                />
+              )}
+
+              {!added && (
+                <button type="button" className="btn-small btn-ghost" style={{ marginTop: '0.75rem' }} onClick={() => setMode('view')}>
+                  ← Back
+                </button>
+              )}
             </div>
           </div>
         )}
