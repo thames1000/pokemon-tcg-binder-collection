@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { api } from '../api.js';
 import CardTile from './CardTile.jsx';
 import { useCardSearch } from '../hooks/useCardSearch.js';
+import { VARIANT_OPTIONS } from '../pricing.js';
 
 export default function BinderSlotModal({ binderId, position, slot, onClose, onChanged }) {
   const [mode, setMode] = useState(slot ? 'view' : 'search'); // 'view' | 'search'
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [variant, setVariant] = useState('');
 
   const {
     name, setName, setId, setSetId, sets, cards, page, setPage,
@@ -17,7 +19,7 @@ export default function BinderSlotModal({ binderId, position, slot, onClose, onC
     setSaving(true);
     setError(null);
     try {
-      await api.setBinderSlot(binderId, position, { cardId: card.id, card });
+      await api.setBinderSlot(binderId, position, { cardId: card.id, card, variant: variant || null });
       onChanged?.();
       onClose();
     } catch (err) {
@@ -61,6 +63,7 @@ export default function BinderSlotModal({ binderId, position, slot, onClose, onC
               <h2>{slot.card.name}</h2>
               <p className="modal-subtitle">
                 {slot.card.set?.name} · #{slot.card.number} · {slot.card.rarity || 'Unknown rarity'}
+                {slot.variant && ` · ${slot.variant}`}
               </p>
               <p className={slot.owned ? 'success-text' : 'muted'}>
                 {slot.owned ? '✓ In your collection' : 'Not in your collection yet'}
@@ -97,6 +100,18 @@ export default function BinderSlotModal({ binderId, position, slot, onClose, onC
                 Search
               </button>
             </form>
+
+            <label className="binder-variant-picker">
+              Planned variant for this slot (optional)
+              <select value={variant} onChange={(e) => setVariant(e.target.value)}>
+                <option value="">Unspecified</option>
+                {VARIANT_OPTIONS.map((v) => (
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+            </label>
 
             {(error || searchError) && <p className="error-text">{error || searchError} {searchError && <button type="button" className="btn-small" onClick={retry}>Retry</button>}</p>}
             {loading && <p className="muted">Loading…</p>}

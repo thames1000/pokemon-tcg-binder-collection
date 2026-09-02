@@ -7,6 +7,13 @@ const router = Router();
 const SLOTS_PER_SIDE = 9; // 3x3
 const SLOTS_PER_PAGE = SLOTS_PER_SIDE * 2; // front + back
 
+// Rarities that default to "2 slots" (Normal + Reverse Holofoil) when a set is
+// first previewed — conservative and only for exact, modern-naming rarities;
+// everything else (including "Rare Holo", Promo, and every above-Rare tier,
+// which are already single, holo-only prints) defaults to 1. Fully overridable
+// per rarity in the New Binder modal before creating — this is just the seed.
+const DEFAULT_TWO_SLOT_RARITIES = new Set(['Common', 'Uncommon', 'Rare']);
+
 // Natural sort for printed card numbers ("1" < "2" < "10", "TG01" < "TG02", etc.)
 // so a set fills into a binder in the same order the physical cards are numbered.
 function compareCardNumbers(a, b) {
@@ -28,6 +35,25 @@ function compareCardNumbers(a, b) {
     }
   }
   return 0;
+}
+
+const isPromoRarity = (rarity) => /promo/i.test(rarity || '');
+
+// Fetches every card in a set (pokemontcg.io caps pageSize at 250; a handful of
+// sets exceed that, so paginate defensively, capped at 10 pages — no real set is
+// 2500+ cards), sorted by printed number.
+async function fetchAllCardsForSet(setId) {
+  let allCards = [];
+  let page = 1;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const result = await searchCards({ set: setId, page, pageSize: 250 });
+    allCards = allCards.concat(result.cards);
+    if (allCards.length >= result.totalCount || result.cards.length === 0 || page >= 10) break;
+    page++;
+  }
+  allCards.sort((a, b) => compareCardNumbers(a.number, b.number));
+  return allCards;
 }
 
 function rowToBinder(row) {
@@ -53,6 +79,35 @@ router.get('/', (req, res) => {
   res.json(result);
 });
 
+// GET /api/binders/set-preview?setId=X - rarity breakdown for a set, used by the
+// New Binder modal to build the per-rarity slot-count checklist before creating.
+router.get('/set-preview', async (req, res) => {
+  const { setId } = req.query;
+  if (!setId) return res.status(400).json({ error: 'setId is required' });
+  try {
+    const cards = await fetchAllCardsForSet(setId);
+    if (cards.length === 0) return res.status(404).json({ error: `No cards found for set "${setId}"` });
+
+    const counts = new Map();
+    for (const card of cards) {
+      const rarity = card.rarity || 'Unknown';
+      counts.set(rarity, (counts.get(rarity) || 0) + 1);
+    }
+    const rarities = [...counts.entries()]
+      .map(([rarity, count]) => ({
+        rarity,
+        count,
+        isPromo: isPromoRarity(rarity),
+        defaultSlots: DEFAULT_TWO_SLOT_RARITIES.has(rarity) ? 2 : 1,
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    res.json({ setId, setName: cards[0]?.set?.name || setId, totalCards: cards.length, rarities });
+  } catch (e) {
+    res.status(e.status || 500).json({ error: e.message });
+  }
+});
+
 // GET /api/binders/:id - full binder with every filled slot (+ whether you own that card)
 router.get('/:id', (req, res) => {
   const binder = db.prepare('SELECT * FROM binders WHERE id = ?').get(req.params.id);
@@ -63,6 +118,7 @@ router.get('/:id', (req, res) => {
     position: s.position,
     cardId: s.card_id,
     card: s.card_snapshot ? JSON.parse(s.card_snapshot) : null,
+    variant: s.variant,
     notes: s.notes,
     owned: !!db.prepare('SELECT 1 FROM collection_items WHERE card_id = ? LIMIT 1').get(s.card_id),
   }));
@@ -72,31 +128,36 @@ router.get('/:id', (req, res) => {
 
 // POST /api/binders - create a binder.
 // Manual: { name, mode: 'manual', pageCount? } — starts empty.
-// From a set: { name, mode: 'set', setId } — fetches every card in the set, sorts
-// by printed number, and fills slots 0..N in order, sizing pageCount to fit.
+// From a set: { name, mode: 'set', setId, excludePromos?, rarityRules? }
+//   rarityRules: { [rarity]: 1 | 2 } — cards of that rarity get that many
+//   consecutive slots (2 = Normal + Reverse Holofoil). Rarities not listed
+//   default to 1. See GET /set-preview for the rarity list to build this from.
 router.post('/', async (req, res) => {
-  const { name, mode, setId, pageCount } = req.body;
+  const { name, mode, setId, pageCount, excludePromos = true, rarityRules = {} } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ error: 'name is required' });
 
   if (mode === 'set') {
     if (!setId) return res.status(400).json({ error: 'setId is required when mode is "set"' });
     try {
-      let allCards = [];
-      let page = 1;
-      // pokemontcg.io caps pageSize at 250; a handful of sets exceed that, so
-      // paginate defensively (capped at 10 pages — no real set is 2500+ cards).
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        const result = await searchCards({ set: setId, page, pageSize: 250 });
-        allCards = allCards.concat(result.cards);
-        if (allCards.length >= result.totalCount || result.cards.length === 0 || page >= 10) break;
-        page++;
-      }
-      if (allCards.length === 0) return res.status(404).json({ error: `No cards found for set "${setId}"` });
+      let cards = await fetchAllCardsForSet(setId);
+      if (cards.length === 0) return res.status(404).json({ error: `No cards found for set "${setId}"` });
+      if (excludePromos) cards = cards.filter((c) => !isPromoRarity(c.rarity));
+      if (cards.length === 0) return res.status(400).json({ error: 'No cards left after excluding promos' });
 
-      allCards.sort((a, b) => compareCardNumbers(a.number, b.number));
-      const neededPages = Math.max(1, Math.ceil(allCards.length / SLOTS_PER_PAGE));
-      const setName = allCards[0]?.set?.name || setId;
+      // Expand each card into 1 or 2 consecutive slots per the rarity rules.
+      const placements = [];
+      for (const card of cards) {
+        const slotCount = rarityRules[card.rarity] === 2 ? 2 : 1;
+        if (slotCount === 2) {
+          placements.push({ card, variant: 'Normal' });
+          placements.push({ card, variant: 'Reverse Holofoil' });
+        } else {
+          placements.push({ card, variant: null });
+        }
+      }
+
+      const neededPages = Math.max(1, Math.ceil(placements.length / SLOTS_PER_PAGE));
+      const setName = cards[0]?.set?.name || setId;
 
       const info = db
         .prepare('INSERT INTO binders (name, source_set_id, source_set_name, page_count) VALUES (?, ?, ?, ?)')
@@ -104,14 +165,14 @@ router.post('/', async (req, res) => {
       const binderId = info.lastInsertRowid;
 
       const insertSlot = db.prepare(
-        'INSERT INTO binder_slots (binder_id, position, card_id, card_snapshot) VALUES (?, ?, ?, ?)'
+        'INSERT INTO binder_slots (binder_id, position, card_id, card_snapshot, variant) VALUES (?, ?, ?, ?, ?)'
       );
-      db.transaction((cards) => {
-        cards.forEach((card, i) => insertSlot.run(binderId, i, card.id, JSON.stringify(card)));
-      })(allCards);
+      db.transaction((items) => {
+        items.forEach((item, i) => insertSlot.run(binderId, i, item.card.id, JSON.stringify(item.card), item.variant));
+      })(placements);
 
       const binder = db.prepare('SELECT * FROM binders WHERE id = ?').get(binderId);
-      res.status(201).json({ ...rowToBinder(binder), filledSlots: allCards.length });
+      res.status(201).json({ ...rowToBinder(binder), filledSlots: placements.length });
     } catch (e) {
       res.status(e.status || 500).json({ error: e.message });
     }
@@ -162,7 +223,7 @@ router.delete('/:id', (req, res) => {
 });
 
 // PUT /api/binders/:id/slots/:position - place or replace the card in one slot.
-// body: { cardId, card, notes }
+// body: { cardId, card, variant, notes }
 router.put('/:id/slots/:position', (req, res) => {
   const binder = db.prepare('SELECT * FROM binders WHERE id = ?').get(req.params.id);
   if (!binder) return res.status(404).json({ error: 'Not found' });
@@ -173,19 +234,19 @@ router.put('/:id/slots/:position', (req, res) => {
     return res.status(400).json({ error: 'Invalid slot position' });
   }
 
-  const { cardId, card, notes } = req.body;
+  const { cardId, card, variant, notes } = req.body;
   if (!cardId) return res.status(400).json({ error: 'cardId is required' });
 
   db.prepare(
-    `INSERT INTO binder_slots (binder_id, position, card_id, card_snapshot, notes) VALUES (?, ?, ?, ?, ?)
+    `INSERT INTO binder_slots (binder_id, position, card_id, card_snapshot, variant, notes) VALUES (?, ?, ?, ?, ?, ?)
      ON CONFLICT(binder_id, position) DO UPDATE SET
        card_id = excluded.card_id, card_snapshot = excluded.card_snapshot,
-       notes = excluded.notes, added_at = datetime('now')`
-  ).run(req.params.id, position, cardId, card ? JSON.stringify(card) : null, notes ?? null);
+       variant = excluded.variant, notes = excluded.notes, added_at = datetime('now')`
+  ).run(req.params.id, position, cardId, card ? JSON.stringify(card) : null, variant ?? null, notes ?? null);
   db.prepare("UPDATE binders SET updated_at = datetime('now') WHERE id = ?").run(req.params.id);
 
   const owned = !!db.prepare('SELECT 1 FROM collection_items WHERE card_id = ? LIMIT 1').get(cardId);
-  res.json({ position, cardId, card, notes: notes ?? null, owned });
+  res.json({ position, cardId, card, variant: variant ?? null, notes: notes ?? null, owned });
 });
 
 // DELETE /api/binders/:id/slots/:position - clear a slot

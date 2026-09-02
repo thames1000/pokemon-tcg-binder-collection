@@ -932,6 +932,66 @@ textarea {
   background: color-mix(in srgb, var(--primary) 6%, var(--surface));
 }
 
+/* Binders — rarity rules checklist */
+.rarity-rules {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem;
+  background: var(--bg);
+}
+
+.rarity-rules-promo {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.rarity-rules-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.rarity-rule-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+
+.rarity-rule-excluded {
+  opacity: 0.5;
+}
+
+.rarity-rule-name {
+  flex: 1;
+  color: var(--text);
+}
+
+.rarity-rule-slots {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.rarity-rules-total {
+  margin: 0.6rem 0 0;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--text);
+}
+
 /* Binders — detail view */
 .binder-back-link {
   display: inline-block;
@@ -1061,8 +1121,30 @@ textarea {
   line-height: 1;
 }
 
+.binder-slot-variant {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  background: rgba(0, 0, 0, 0.65);
+  color: white;
+  border-radius: 4px;
+  padding: 0.05rem 0.3rem;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
 .binder-search-grid {
   margin-top: 1rem;
   max-height: 420px;
   overflow-y: auto;
+}
+
+.binder-variant-picker {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 0.75rem;
 }

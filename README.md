@@ -20,7 +20,10 @@ no subscription.
   includes a `cardId` column, so re-importing your own export is an exact, lossless round trip.
 - **Binders** — plan where cards go in a physical 9-pocket binder: a 3×3 front + 3×3 back per
   page, flip through page by page. Auto-fill an entire binder from a set (sorted by card
-  number) or build one manually, slot by slot. Slots show whether you already own that card.
+  number), with a per-rarity rules checklist — e.g. give Common/Uncommon/Rare 2 slots each
+  (Normal + Reverse Holofoil) while higher rarities get 1 (already a single foil-only print),
+  and optionally exclude promo-rarity cards — or build one manually, slot by slot. Slots show
+  whether you already own that card.
 
 ## Stack
 
@@ -98,8 +101,9 @@ match, the card just shows "No price data available" — never a fabricated pric
 | PATCH | `/api/wishlist/:id` | Update target price/notes |
 | DELETE | `/api/wishlist/:id` | Remove a card from your wishlist |
 | GET | `/api/binders` | List binders with fill progress |
+| GET | `/api/binders/set-preview?setId=` | Rarity breakdown for a set (builds the rules checklist) |
 | GET | `/api/binders/:id` | One binder with every filled slot |
-| POST | `/api/binders` | Create — `{ name, mode: 'manual', pageCount? }` or `{ name, mode: 'set', setId }` |
+| POST | `/api/binders` | Create — `{ name, mode: 'manual', pageCount? }` or `{ name, mode: 'set', setId, excludePromos?, rarityRules? }` |
 | PATCH | `/api/binders/:id` | Rename and/or resize (grow/shrink page count) |
 | DELETE | `/api/binders/:id` | Delete a binder |
 | PUT | `/api/binders/:id/slots/:position` | Place/replace a card in one slot |

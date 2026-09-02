@@ -88,6 +88,7 @@ db.exec(`
     position INTEGER NOT NULL,
     card_id TEXT NOT NULL,
     card_snapshot TEXT,
+    variant TEXT,
     notes TEXT,
     added_at TEXT NOT NULL DEFAULT (datetime('now')),
     UNIQUE(binder_id, position)
@@ -95,5 +96,13 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_binder_slots_binder ON binder_slots(binder_id);
 `);
+
+// Lightweight migration for databases created before the `variant` column existed
+// (CREATE TABLE IF NOT EXISTS above only applies to brand-new tables).
+try {
+  db.exec('ALTER TABLE binder_slots ADD COLUMN variant TEXT');
+} catch {
+  // column already exists — fine
+}
 
 export default db;
