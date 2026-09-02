@@ -68,12 +68,14 @@ db.exec(`
 
   -- A planned physical binder: pageCount pages, each page = a front side + a back
   -- side of a 3x3 (9-pocket) sheet, so 18 slots per page. sourceSetId/sourceSetName
-  -- are set when the binder was auto-filled from a full set; null for a manual binder.
+  -- are set when auto-filled from a full set; source_pokemon_name when auto-filled
+  -- from every card of one Pokémon; all null for a manual binder.
   CREATE TABLE IF NOT EXISTS binders (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     source_set_id TEXT,
     source_set_name TEXT,
+    source_pokemon_name TEXT,
     page_count INTEGER NOT NULL DEFAULT 4,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -97,12 +99,17 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_binder_slots_binder ON binder_slots(binder_id);
 `);
 
-// Lightweight migration for databases created before the `variant` column existed
+// Lightweight migrations for databases created before these columns existed
 // (CREATE TABLE IF NOT EXISTS above only applies to brand-new tables).
-try {
-  db.exec('ALTER TABLE binder_slots ADD COLUMN variant TEXT');
-} catch {
-  // column already exists — fine
+for (const stmt of [
+  'ALTER TABLE binder_slots ADD COLUMN variant TEXT',
+  'ALTER TABLE binders ADD COLUMN source_pokemon_name TEXT',
+]) {
+  try {
+    db.exec(stmt);
+  } catch {
+    // column already exists — fine
+  }
 }
 
 export default db;

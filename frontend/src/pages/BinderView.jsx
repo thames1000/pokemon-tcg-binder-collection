@@ -114,6 +114,7 @@ export default function BinderView() {
       </div>
       <p className="page-subtitle">
         {binder.sourceSetName ? `${binder.sourceSetName} · ` : ''}
+        {binder.sourcePokemonName ? `Every ${binder.sourcePokemonName} card · ` : ''}
         {binder.slots.length}/{binder.totalSlots} slots filled
       </p>
 

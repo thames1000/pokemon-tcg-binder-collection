@@ -60,6 +60,7 @@ export default function BinderList() {
                 <div className="binder-card-name">{b.name}</div>
                 <div className="muted">
                   {b.sourceSetName ? `${b.sourceSetName} · ` : ''}
+                  {b.sourcePokemonName ? `Every ${b.sourcePokemonName} card · ` : ''}
                   {b.pageCount} page{b.pageCount === 1 ? '' : 's'} · {b.filledSlots}/{b.totalSlots} filled
                 </div>
                 <div className="binder-progress-track">
