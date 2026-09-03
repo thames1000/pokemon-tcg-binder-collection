@@ -13,7 +13,7 @@ function dexLabelFor(dexNames, pos) {
   return { number: pos + 1, name: dexNames[pos] };
 }
 
-function SideGrid({ label, positions, slotByPosition, dexNames, onSlotClick }) {
+function SideGrid({ label, positions, slotByPosition, dexNames, highlightPosition, onSlotClick }) {
   return (
     <div className="binder-side">
       <div className="binder-side-label">{label}</div>
@@ -23,6 +23,7 @@ function SideGrid({ label, positions, slotByPosition, dexNames, onSlotClick }) {
             key={pos}
             slot={slotByPosition.get(pos) || null}
             dexLabel={dexLabelFor(dexNames, pos)}
+            highlighted={pos === highlightPosition}
             onClick={() => onSlotClick(pos)}
           />
         ))}
@@ -31,13 +32,13 @@ function SideGrid({ label, positions, slotByPosition, dexNames, onSlotClick }) {
   );
 }
 
-function PageSpread({ pageNumber, positions: { frontPositions, backPositions }, slotByPosition, dexNames, onSlotClick, showLabel }) {
+function PageSpread({ pageNumber, positions: { frontPositions, backPositions }, slotByPosition, dexNames, highlightPosition, onSlotClick, showLabel }) {
   return (
-    <div className="binder-spread-wrap">
+    <div className="binder-spread-wrap" id={`binder-page-${pageNumber}`}>
       {showLabel && <div className="binder-scroll-page-label">Page {pageNumber}</div>}
       <div className="binder-spread">
-        <SideGrid label="Front" positions={frontPositions} slotByPosition={slotByPosition} dexNames={dexNames} onSlotClick={onSlotClick} />
-        <SideGrid label="Back" positions={backPositions} slotByPosition={slotByPosition} dexNames={dexNames} onSlotClick={onSlotClick} />
+        <SideGrid label="Front" positions={frontPositions} slotByPosition={slotByPosition} dexNames={dexNames} highlightPosition={highlightPosition} onSlotClick={onSlotClick} />
+        <SideGrid label="Back" positions={backPositions} slotByPosition={slotByPosition} dexNames={dexNames} highlightPosition={highlightPosition} onSlotClick={onSlotClick} />
       </div>
     </div>
   );
@@ -63,6 +64,11 @@ export default function BinderView() {
   const [nameDraft, setNameDraft] = useState('');
   const [addingPage, setAddingPage] = useState(false);
   const [dexNames, setDexNames] = useState(null);
+  const [findQuery, setFindQuery] = useState('');
+  const [matches, setMatches] = useState([]); // positions matching the last search
+  const [matchIndex, setMatchIndex] = useState(0);
+  const [highlightPosition, setHighlightPosition] = useState(null);
+  const [findMessage, setFindMessage] = useState(null);
   const [viewMode, setViewMode] = useState(() => {
     try {
       return localStorage.getItem(VIEW_MODE_KEY) || 'page';
@@ -136,6 +142,65 @@ export default function BinderView() {
     }
   }
 
+  // Jump to whichever page holds `position` (switching page in 'page' mode, or
+  // smooth-scrolling to that page's anchor in 'scroll' mode) and flash a
+  // highlight on the slot itself so it's not just "the right page" but "right
+  // there." setPageIndex/setHighlightPosition are both called synchronously
+  // here, so React batches them into one re-render — the new page renders
+  // already highlighted, no flash-then-highlight race.
+  function jumpToPosition(pos) {
+    const targetPage = Math.floor(pos / SLOTS_PER_PAGE);
+    if (viewMode === 'page') {
+      setPageIndex(targetPage);
+    } else {
+      document.getElementById(`binder-page-${targetPage + 1}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    setHighlightPosition(pos);
+    setTimeout(() => setHighlightPosition((p) => (p === pos ? null : p)), 3000);
+  }
+
+  function handleFindSubmit(e) {
+    e.preventDefault();
+    const q = findQuery.trim().toLowerCase();
+    if (!q) {
+      setMatches([]);
+      setFindMessage(null);
+      return;
+    }
+    const found = [];
+    const filledPositions = new Set();
+    binder.slots.forEach((s) => {
+      filledPositions.add(s.position);
+      if (s.card?.name?.toLowerCase().includes(q)) found.push(s.position);
+    });
+    // For a National Dex binder, also offer empty slots whose species label
+    // matches — the whole point of finding a slot is often "where would this
+    // card go" before you actually own a copy to place there.
+    if (dexNames) {
+      dexNames.forEach((dexName, i) => {
+        if (!filledPositions.has(i) && dexName.toLowerCase().includes(q)) found.push(i);
+      });
+    }
+    found.sort((a, b) => a - b);
+    if (found.length === 0) {
+      setMatches([]);
+      setFindMessage(`No slot matches "${findQuery.trim()}"`);
+      setHighlightPosition(null);
+      return;
+    }
+    setMatches(found);
+    setMatchIndex(0);
+    setFindMessage(`${found.length} match${found.length > 1 ? 'es' : ''}`);
+    jumpToPosition(found[0]);
+  }
+
+  function goToMatch(delta) {
+    if (matches.length === 0) return;
+    const next = (matchIndex + delta + matches.length) % matches.length;
+    setMatchIndex(next);
+    jumpToPosition(matches[next]);
+  }
+
   return (
     <div className="page">
       <Link to="/binders" className="binder-back-link">
@@ -193,6 +258,32 @@ export default function BinderView() {
         </div>
       )}
 
+      <form className="binder-find-bar" onSubmit={handleFindSubmit}>
+        <input
+          type="text"
+          placeholder="Find a card in this binder…"
+          value={findQuery}
+          onChange={(e) => setFindQuery(e.target.value)}
+        />
+        <button type="submit" className="btn-small">
+          Find
+        </button>
+        {matches.length > 1 && (
+          <div className="binder-find-nav">
+            <button type="button" className="btn-small" onClick={() => goToMatch(-1)}>
+              ← Prev
+            </button>
+            <span className="muted">
+              {matchIndex + 1} of {matches.length}
+            </span>
+            <button type="button" className="btn-small" onClick={() => goToMatch(1)}>
+              Next →
+            </button>
+          </div>
+        )}
+        {findMessage && matches.length <= 1 && <span className="muted">{findMessage}</span>}
+      </form>
+
       <div className="binder-page-nav">
         {viewMode === 'page' ? (
           <>
@@ -228,6 +319,7 @@ export default function BinderView() {
           positions={pagePositions(pageIndex)}
           slotByPosition={slotByPosition}
           dexNames={dexNames}
+          highlightPosition={highlightPosition}
           onSlotClick={setActiveSlotPos}
           showLabel={false}
         />
@@ -240,6 +332,7 @@ export default function BinderView() {
               positions={pagePositions(i)}
               slotByPosition={slotByPosition}
               dexNames={dexNames}
+              highlightPosition={highlightPosition}
               onSlotClick={setActiveSlotPos}
               showLabel
             />

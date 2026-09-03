@@ -1,8 +1,9 @@
-export default function BinderSlot({ slot, dexLabel, onClick }) {
+export default function BinderSlot({ slot, dexLabel, highlighted, onClick }) {
   const card = slot?.card;
   const filledClass = card ? (slot.owned ? 'binder-slot-filled binder-slot-owned-yes' : 'binder-slot-filled binder-slot-owned-no') : 'binder-slot-empty';
+  const highlightClass = highlighted ? ' binder-slot-highlighted' : '';
   return (
-    <button type="button" className={`binder-slot ${filledClass}`} onClick={onClick}>
+    <button type="button" className={`binder-slot ${filledClass}${highlightClass}`} onClick={onClick}>
       {card ? (
         <>
           <img src={card.images?.small} alt={card.name} className="binder-slot-image" loading="lazy" />

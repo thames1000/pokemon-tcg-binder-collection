@@ -10,7 +10,9 @@ no subscription.
 - **Library** — search/browse every Pokémon TCG card ever printed, filter by set. Up to 250
   results per page (pokemontcg.io's own per-request cap) — most sets fit entirely on one page,
   so filtering by set means scrolling through the whole thing rather than clicking through
-  several pages of 32.
+  several pages of 32. Sort results by name, card number (natural order — "2" before "10"),
+  or price (high-to-low or low-to-high; cards with no price data always sort to the bottom,
+  never treated as worth $0).
 - **My Collection** — add cards you own with quantity, condition, variant (normal/holofoil/
   reverse holo/1st edition/…), price paid, and notes. Edit or remove anytime.
 - **Price Lookup** — a dedicated view to check a card's current price without the pressure of
@@ -43,7 +45,12 @@ no subscription.
   own. Every binder also shows an estimated cost to complete: current market price summed
   across every unowned, priced slot (from live-cached prices, not a stale snapshot from
   when the binder was built), alongside what you've already got and how many slots simply
-  have no price data yet — never silently reported as $0.
+  have no price data yet — never silently reported as $0. Every binder also has a "Find in
+  this binder" search: type a card name and it jumps straight to the page it's on (in "one
+  page" mode) or smooth-scrolls there (in "scroll all pages" mode), flashing a brief highlight
+  around the matching slot. In a National Dex binder this also finds empty slots by species
+  name — "charizard" jumps to its labeled empty slot even before you own a copy to put there.
+  Multiple matches cycle with Next/Prev.
 
 ## Stack
 
