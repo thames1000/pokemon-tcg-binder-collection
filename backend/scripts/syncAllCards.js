@@ -15,6 +15,31 @@ import { fetchFromApi, withFallbackPrice, cacheCard, getApiCache, setApiCache, m
 
 const PAGE_SIZE = 250;
 const PROGRESS_KEY = 'card-sync:progress';
+// pokemontcg.io's backend has been especially unstable during this project's
+// Scrydex migration (see README) — a burst of 82 back-to-back page requests
+// can hit a noticeably higher failure rate than normal single-request use.
+// fetchFromApi already retries 4x per HTTP call; on top of that, each page
+// here gets its own retry budget with longer backoff, plus a small pause
+// between successful pages to ease pressure on a currently-flaky upstream.
+const PAGE_RETRY_LIMIT = 6;
+const PAGE_RETRY_DELAY_MS = 3000;
+const INTER_PAGE_DELAY_MS = 500;
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function fetchPageWithRetry(page) {
+  let lastErr;
+  for (let attempt = 1; attempt <= PAGE_RETRY_LIMIT; attempt++) {
+    try {
+      return await fetchFromApi(`/cards?page=${page}&pageSize=${PAGE_SIZE}&orderBy=name`);
+    } catch (e) {
+      lastErr = e;
+      console.warn(`  page ${page}: attempt ${attempt}/${PAGE_RETRY_LIMIT} failed (${e.message}) — retrying…`);
+      if (attempt < PAGE_RETRY_LIMIT) await sleep(PAGE_RETRY_DELAY_MS * attempt);
+    }
+  }
+  throw lastErr;
+}
 
 async function main() {
   const restart = process.argv.includes('--restart');
@@ -38,7 +63,7 @@ async function main() {
 
   // eslint-disable-next-line no-constant-condition
   while (true) {
-    const data = await fetchFromApi(`/cards?page=${page}&pageSize=${PAGE_SIZE}&orderBy=name`);
+    const data = await fetchPageWithRetry(page);
     totalCount = data.totalCount;
     const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
@@ -53,6 +78,7 @@ async function main() {
 
     if (data.data.length === 0 || page >= totalPages) break;
     page++;
+    await sleep(INTER_PAGE_DELAY_MS);
   }
 
   // Only now — having actually reached the last page — is it safe for
