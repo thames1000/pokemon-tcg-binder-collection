@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { api } from '../api.js';
 import CardTile from '../components/CardTile.jsx';
 import AddToCollectionModal from '../components/AddToCollectionModal.jsx';
 import AddToWishlistModal from '../components/AddToWishlistModal.jsx';
@@ -27,6 +28,39 @@ export default function Library({ onCollectionChanged }) {
   } = useCardSearch();
   const [selectedCard, setSelectedCard] = useState(null);
   const [wishlistCard, setWishlistCard] = useState(null);
+  // cardId -> wishlist item id, so the star can show filled/empty per card
+  // and a filled star knows which row to delete on click.
+  const [wishlistedIds, setWishlistedIds] = useState(new Map());
+
+  const loadWishlist = useCallback(async () => {
+    try {
+      const items = await api.getWishlist();
+      setWishlistedIds(new Map(items.map((item) => [item.cardId, item.id])));
+    } catch {
+      // non-critical — the star just won't reflect wishlist state until a retry
+    }
+  }, []);
+
+  useEffect(() => {
+    loadWishlist();
+  }, [loadWishlist]);
+
+  async function handleUnwishlist(card) {
+    const itemId = wishlistedIds.get(card.id);
+    if (itemId == null) return;
+    // Optimistic — the star flips back to empty immediately rather than
+    // waiting on the round trip.
+    setWishlistedIds((prev) => {
+      const next = new Map(prev);
+      next.delete(card.id);
+      return next;
+    });
+    try {
+      await api.removeFromWishlist(itemId);
+    } catch {
+      loadWishlist(); // request failed — resync with the server's actual state
+    }
+  }
 
   return (
     <div className="page">
@@ -84,7 +118,14 @@ export default function Library({ onCollectionChanged }) {
 
       <div className="card-grid">
         {cards.map((card) => (
-          <CardTile key={card.id} card={card} onOpen={setSelectedCard} onWishlist={setWishlistCard} />
+          <CardTile
+            key={card.id}
+            card={card}
+            onOpen={setSelectedCard}
+            onWishlist={setWishlistCard}
+            onUnwishlist={handleUnwishlist}
+            wishlisted={wishlistedIds.has(card.id)}
+          />
         ))}
       </div>
 
@@ -111,7 +152,7 @@ export default function Library({ onCollectionChanged }) {
       )}
 
       {wishlistCard && (
-        <AddToWishlistModal card={wishlistCard} onClose={() => setWishlistCard(null)} />
+        <AddToWishlistModal card={wishlistCard} onClose={() => setWishlistCard(null)} onAdded={loadWishlist} />
       )}
     </div>
   );

@@ -14,7 +14,8 @@ no subscription.
   or price (high-to-low or low-to-high; cards with no price data always sort to the bottom,
   never treated as worth $0) — sorting covers the *entire* matched set once it's cached
   (see "Cache-first search" below), not just the current page. Each card tile has a quick
-  ☆ button to add it straight to your wishlist without opening the add-to-collection flow.
+  ☆ button to add it straight to your wishlist without opening the add-to-collection flow —
+  filled (★) for a card already on your wishlist, click again to remove it.
 - **My Collection** — add cards you own with quantity, condition, variant (normal/holofoil/
   reverse holo/1st edition/…), price paid, and notes. Edit or remove anytime.
 - **Price Lookup** — a dedicated view to check a card's current price without the pressure of

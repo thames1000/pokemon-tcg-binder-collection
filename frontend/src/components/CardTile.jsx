@@ -1,10 +1,14 @@
 import { bestPrice } from '../pricing.js';
 
-// onWishlist is optional — only Library passes it (a quick "add to wishlist"
-// without opening the full add-to-collection modal). Other consumers of this
-// tile (Price Lookup, Wishlist's own search, binder slot search) don't pass
-// it, so no button renders there and nothing else changes for them.
-export default function CardTile({ card, onOpen, onWishlist }) {
+// onWishlist/onUnwishlist are optional — only Library passes them (a quick
+// wishlist toggle without opening the full add-to-collection modal). Other
+// consumers of this tile (Price Lookup, Wishlist's own search, binder slot
+// search) don't pass them, so no button renders there and nothing else
+// changes for them. wishlisted controls which of the two fires: a filled
+// star (already on the wishlist) removes immediately on click — nothing to
+// fill in, so no need for a modal; an empty star opens onWishlist's add
+// modal (target price/notes are worth a form).
+export default function CardTile({ card, onOpen, onWishlist, onUnwishlist, wishlisted = false }) {
   const price = bestPrice(card);
   return (
     <div className="card-tile">
@@ -29,17 +33,18 @@ export default function CardTile({ card, onOpen, onWishlist }) {
           )}
         </div>
       </button>
-      {onWishlist && (
+      {(onWishlist || onUnwishlist) && (
         <button
           type="button"
-          className="card-tile-wishlist-btn"
-          title="Add to wishlist"
+          className={`card-tile-wishlist-btn${wishlisted ? ' card-tile-wishlist-btn-active' : ''}`}
+          title={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
           onClick={(e) => {
             e.stopPropagation();
-            onWishlist(card);
+            if (wishlisted) onUnwishlist?.(card);
+            else onWishlist?.(card);
           }}
         >
-          ☆
+          {wishlisted ? '★' : '☆'}
         </button>
       )}
     </div>

@@ -42,10 +42,17 @@ router.get('/', (req, res) => {
   res.json(items);
 });
 
-// POST /api/wishlist - body: { cardId, card, targetPrice, notes }
+// POST /api/wishlist - body: { cardId, card, targetPrice, notes }. Idempotent
+// by card: if this card is already on the wishlist (e.g. stale frontend state
+// — a card tile's wishlist star not yet knowing about a wishlist add made
+// elsewhere), the existing row is returned as-is rather than creating a
+// second entry for the same card.
 router.post('/', (req, res) => {
   const { cardId, card, targetPrice, notes } = req.body;
   if (!cardId) return res.status(400).json({ error: 'cardId is required' });
+
+  const existing = db.prepare('SELECT * FROM wishlist_items WHERE card_id = ?').get(cardId);
+  if (existing) return res.json(rowToItem(existing));
 
   if (card) {
     db.prepare(

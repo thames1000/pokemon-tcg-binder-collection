@@ -265,6 +265,18 @@ textarea {
   border-color: var(--primary);
 }
 
+.card-tile-wishlist-btn-active {
+  color: #a17700; /* darker than --accent for contrast against a light fill */
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 25%, var(--surface));
+}
+
+.card-tile-wishlist-btn-active:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: var(--surface);
+}
+
 .card-tile-image-wrap img {
   width: 100%;
   border-radius: 6px;
