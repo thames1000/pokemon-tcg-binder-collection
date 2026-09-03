@@ -13,7 +13,8 @@ no subscription.
   several pages of 32. Sort results by name, card number (natural order — "2" before "10"),
   or price (high-to-low or low-to-high; cards with no price data always sort to the bottom,
   never treated as worth $0) — sorting covers the *entire* matched set once it's cached
-  (see "Cache-first search" below), not just the current page.
+  (see "Cache-first search" below), not just the current page. Each card tile has a quick
+  ☆ button to add it straight to your wishlist without opening the add-to-collection flow.
 - **My Collection** — add cards you own with quantity, condition, variant (normal/holofoil/
   reverse holo/1st edition/…), price paid, and notes. Edit or remove anytime.
 - **Price Lookup** — a dedicated view to check a card's current price without the pressure of
@@ -22,6 +23,11 @@ no subscription.
   gainers/losers vs. what you paid.
 - **Wishlist** — track cards you don't own yet with an optional target price; cards that drop
   to or below it are flagged when you check the page (not a push notification — see below).
+  Add cards one at a time — a quick ☆ button on each Library card tile, or search for one
+  directly on the Wishlist page — or in bulk with a binder's "☆ Wishlist missing cards" button:
+  every card currently planned in that binder that you don't already own (in any variant) and
+  isn't already on your wishlist, added in one click; safe to click more than once, it never
+  creates duplicates.
 - **CSV Import/Export** — back up or migrate your whole collection as a spreadsheet. Export
   includes a `cardId` column, so re-importing your own export is an exact, lossless round trip.
 - **Binders** — plan where cards go in a physical 9-pocket binder: a 3×3 front + 3×3 back per
@@ -193,6 +199,7 @@ specific card regardless of mode.
 | DELETE | `/api/binders/:id` | Delete a binder |
 | PUT | `/api/binders/:id/slots/:position` | Place/replace a card in one slot |
 | DELETE | `/api/binders/:id/slots/:position` | Clear a slot |
+| POST | `/api/binders/:id/wishlist-missing` | Add every unowned card planned in this binder to the wishlist (deduped, skips what's already there) |
 
 ### CSV import format
 

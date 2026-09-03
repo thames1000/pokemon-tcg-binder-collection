@@ -420,4 +420,49 @@ router.delete('/:id/slots/:position', (req, res) => {
   res.status(204).end();
 });
 
+// POST /api/binders/:id/wishlist-missing - bulk-add every unowned card
+// currently planned in this binder to the wishlist. Deduped by card: a card
+// with two slots (e.g. a Normal + Reverse Holofoil rarity-rule pair) is only
+// wishlisted once — the wishlist tracks a card, not a specific print/variant
+// — and "owned" here means owning *any* variant, same reasoning. Cards
+// already on the wishlist are skipped rather than duplicated. Empty/unfilled
+// slots (no card chosen yet — the common case for a National Dex binder
+// before you've placed anything) have no specific card to wishlist, so
+// they're not part of this.
+router.post('/:id/wishlist-missing', (req, res) => {
+  const binder = db.prepare('SELECT id FROM binders WHERE id = ?').get(req.params.id);
+  if (!binder) return res.status(404).json({ error: 'Not found' });
+
+  const slotRows = db.prepare('SELECT card_id, card_snapshot FROM binder_slots WHERE binder_id = ?').all(req.params.id);
+  const alreadyWishlisted = new Set(db.prepare('SELECT card_id FROM wishlist_items').all().map((r) => r.card_id));
+  const insertWishlist = db.prepare('INSERT INTO wishlist_items (card_id, card_snapshot) VALUES (?, ?)');
+
+  let added = 0;
+  let alreadyOnWishlist = 0;
+  let alreadyOwned = 0;
+  const seen = new Set();
+
+  db.transaction(() => {
+    for (const s of slotRows) {
+      if (seen.has(s.card_id)) continue;
+      seen.add(s.card_id);
+      if (isSlotOwned(s.card_id, null)) {
+        alreadyOwned++;
+        continue;
+      }
+      if (alreadyWishlisted.has(s.card_id)) {
+        alreadyOnWishlist++;
+        continue;
+      }
+      const snapshot = s.card_snapshot ? JSON.parse(s.card_snapshot) : null;
+      const card = latestCardData(s.card_id, snapshot);
+      insertWishlist.run(s.card_id, card ? JSON.stringify(card) : null);
+      alreadyWishlisted.add(s.card_id);
+      added++;
+    }
+  })();
+
+  res.json({ added, alreadyOnWishlist, alreadyOwned });
+});
+
 export default router;

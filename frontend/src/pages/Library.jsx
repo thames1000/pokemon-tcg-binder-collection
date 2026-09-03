@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import CardTile from '../components/CardTile.jsx';
 import AddToCollectionModal from '../components/AddToCollectionModal.jsx';
+import AddToWishlistModal from '../components/AddToWishlistModal.jsx';
 import { useCardSearch } from '../hooks/useCardSearch.js';
 import { SORT_OPTIONS } from '../sortCards.js';
 
@@ -25,6 +26,7 @@ export default function Library({ onCollectionChanged }) {
     pageSize,
   } = useCardSearch();
   const [selectedCard, setSelectedCard] = useState(null);
+  const [wishlistCard, setWishlistCard] = useState(null);
 
   return (
     <div className="page">
@@ -82,7 +84,7 @@ export default function Library({ onCollectionChanged }) {
 
       <div className="card-grid">
         {cards.map((card) => (
-          <CardTile key={card.id} card={card} onOpen={setSelectedCard} />
+          <CardTile key={card.id} card={card} onOpen={setSelectedCard} onWishlist={setWishlistCard} />
         ))}
       </div>
 
@@ -106,6 +108,10 @@ export default function Library({ onCollectionChanged }) {
           onClose={() => setSelectedCard(null)}
           onAdded={onCollectionChanged}
         />
+      )}
+
+      {wishlistCard && (
+        <AddToWishlistModal card={wishlistCard} onClose={() => setWishlistCard(null)} />
       )}
     </div>
   );

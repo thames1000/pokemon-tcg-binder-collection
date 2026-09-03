@@ -69,6 +69,8 @@ export default function BinderView() {
   const [matchIndex, setMatchIndex] = useState(0);
   const [highlightPosition, setHighlightPosition] = useState(null);
   const [findMessage, setFindMessage] = useState(null);
+  const [wishlisting, setWishlisting] = useState(false);
+  const [wishlistResult, setWishlistResult] = useState(null);
   const [viewMode, setViewMode] = useState(() => {
     try {
       return localStorage.getItem(VIEW_MODE_KEY) || 'page';
@@ -201,6 +203,23 @@ export default function BinderView() {
     jumpToPosition(matches[next]);
   }
 
+  // Bulk-adds every unowned card currently planned in this binder to the
+  // wishlist (see POST /api/binders/:id/wishlist-missing) — deduped by card
+  // and skipping anything already on the wishlist, so this is safe to click
+  // more than once.
+  async function wishlistMissing() {
+    setWishlisting(true);
+    setWishlistResult(null);
+    try {
+      const result = await api.wishlistMissingInBinder(id);
+      setWishlistResult(result);
+    } catch (err) {
+      setWishlistResult({ error: err.message });
+    } finally {
+      setWishlisting(false);
+    }
+  }
+
   return (
     <div className="page">
       <Link to="/binders" className="binder-back-link">
@@ -255,6 +274,22 @@ export default function BinderView() {
               {binder.estimate.unpricedRemaining > 0 && `, ${binder.estimate.unpricedRemaining} no price data`}
             </div>
           </div>
+        </div>
+      )}
+
+      {binder.slots.length > 0 && (
+        <div className="binder-wishlist-missing">
+          <button type="button" className="btn-small" onClick={wishlistMissing} disabled={wishlisting}>
+            {wishlisting ? 'Adding…' : '☆ Wishlist missing cards'}
+          </button>
+          {wishlistResult && !wishlistResult.error && (
+            <span className="muted">
+              Added {wishlistResult.added} card{wishlistResult.added === 1 ? '' : 's'} to your wishlist
+              {wishlistResult.alreadyOnWishlist > 0 ? `, ${wishlistResult.alreadyOnWishlist} already there` : ''}
+              {wishlistResult.alreadyOwned > 0 ? `, ${wishlistResult.alreadyOwned} you already own` : ''}.
+            </span>
+          )}
+          {wishlistResult?.error && <span className="error-text">{wishlistResult.error}</span>}
         </div>
       )}
 

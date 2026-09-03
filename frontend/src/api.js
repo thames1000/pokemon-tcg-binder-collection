@@ -70,4 +70,5 @@ export const api = {
     request(`/binders/${binderId}/slots/${position}`, { method: 'PUT', body: JSON.stringify(payload) }),
   clearBinderSlot: (binderId, position) =>
     request(`/binders/${binderId}/slots/${position}`, { method: 'DELETE' }),
+  wishlistMissingInBinder: (binderId) => request(`/binders/${binderId}/wishlist-missing`, { method: 'POST' }),
 };
