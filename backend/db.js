@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fs from 'node:fs';
+import { bestGuessPrice } from './pricing.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dataDir = path.join(__dirname, 'data');
@@ -109,12 +110,63 @@ for (const stmt of [
   'ALTER TABLE binder_slots ADD COLUMN variant TEXT',
   'ALTER TABLE binders ADD COLUMN source_pokemon_name TEXT',
   'ALTER TABLE binders ADD COLUMN is_national_dex INTEGER NOT NULL DEFAULT 0',
+  // Indexed columns mirroring fields already inside card_cache.data's JSON —
+  // lets search/sort run as a local SQL query instead of a live pokemontcg.io
+  // call. Populated by pokemonApi.js's cacheCard() going forward; existing
+  // rows are backfilled once below.
+  'ALTER TABLE card_cache ADD COLUMN name TEXT',
+  'ALTER TABLE card_cache ADD COLUMN set_id TEXT',
+  'ALTER TABLE card_cache ADD COLUMN set_name TEXT',
+  'ALTER TABLE card_cache ADD COLUMN number TEXT',
+  'ALTER TABLE card_cache ADD COLUMN price_amount REAL',
+  'ALTER TABLE card_cache ADD COLUMN price_currency TEXT',
 ]) {
   try {
     db.exec(stmt);
   } catch {
     // column already exists — fine
   }
+}
+
+db.exec(`
+  CREATE INDEX IF NOT EXISTS idx_card_cache_name ON card_cache(name COLLATE NOCASE);
+  CREATE INDEX IF NOT EXISTS idx_card_cache_set ON card_cache(set_id);
+  CREATE INDEX IF NOT EXISTS idx_card_cache_price ON card_cache(price_amount);
+`);
+
+// One-time backfill for card_cache rows written before the columns above
+// existed — computed the same way cacheCard() computes them going forward,
+// just done here in bulk so a search can serve everything already cached
+// (e.g. a binder's set, from earlier browsing) without waiting on a fresh
+// sync. Cheap: it's a local loop over whatever's already cached, not a
+// network call, and only touches rows still missing `name`.
+const staleRows = db.prepare('SELECT id, data FROM card_cache WHERE name IS NULL').all();
+if (staleRows.length) {
+  const backfillStmt = db.prepare(
+    `UPDATE card_cache SET name = ?, set_id = ?, set_name = ?, number = ?, price_amount = ?, price_currency = ? WHERE id = ?`
+  );
+  const backfillAll = db.transaction((rows) => {
+    for (const row of rows) {
+      let card;
+      try {
+        card = JSON.parse(row.data);
+      } catch {
+        continue; // corrupt row — leave it, cacheCard() will overwrite on next fetch
+      }
+      const price = bestGuessPrice(card);
+      backfillStmt.run(
+        card.name ?? null,
+        card.set?.id ?? null,
+        card.set?.name ?? null,
+        card.number ?? null,
+        price?.amount ?? null,
+        price?.currency ?? null,
+        row.id
+      );
+    }
+  });
+  backfillAll(staleRows);
+  console.log(`Backfilled search columns for ${staleRows.length} already-cached card(s)`);
 }
 
 export default db;

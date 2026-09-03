@@ -2,6 +2,23 @@ import { useState } from 'react';
 import { api } from '../api.js';
 import { tcgplayerVariants } from '../pricing.js';
 
+// card.pricesUpdatedAt comes from the backend as either a SQLite
+// datetime('now') string ("2026-09-03 15:40:57", UTC, no zone marker) or an
+// ISO string (from a just-completed live fetch) — normalize both to a Date.
+function formatLastUpdated(timestamp) {
+  if (!timestamp) return null;
+  const iso = timestamp.includes('T') ? timestamp : `${timestamp.replace(' ', 'T')}Z`;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  const diffMin = Math.round((Date.now() - date.getTime()) / 60000);
+  if (diffMin < 1) return 'just now';
+  if (diffMin < 60) return `${diffMin} minute${diffMin === 1 ? '' : 's'} ago`;
+  const diffHr = Math.round(diffMin / 60);
+  if (diffHr < 24) return `${diffHr} hour${diffHr === 1 ? '' : 's'} ago`;
+  const diffDay = Math.round(diffHr / 24);
+  return `${diffDay} day${diffDay === 1 ? '' : 's'} ago`;
+}
+
 // Renders a card's TCGplayer/Cardmarket price breakdown, with a button to force a
 // live re-fetch (bypassing the backend's cache) instead of waiting out its TTL.
 export default function CardPriceTable({ card, onCardUpdated }) {
@@ -15,6 +32,7 @@ export default function CardPriceTable({ card, onCardUpdated }) {
   // this card (common for very recently released sets — see README) — a TCGdex
   // fallback price, if one was found. See backend/tcgdexApi.js.
   const fallback = variants.length === 0 && !cardmarket ? card.priceFallback : null;
+  const lastUpdated = formatLastUpdated(card.pricesUpdatedAt);
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -83,8 +101,10 @@ export default function CardPriceTable({ card, onCardUpdated }) {
       )}
 
       {refreshError && <p className="error-text">{refreshError}</p>}
-      {refreshedAt && !refreshError && (
+      {refreshedAt && !refreshError ? (
         <p className="muted price-refreshed-note">Refreshed at {refreshedAt.toLocaleTimeString()}</p>
+      ) : (
+        lastUpdated && <p className="muted price-refreshed-note">Prices last updated {lastUpdated}</p>
       )}
     </div>
   );

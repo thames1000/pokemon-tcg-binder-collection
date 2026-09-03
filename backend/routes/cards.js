@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { fetchFromApi, getApiCache, setApiCache, getCardById, searchCards } from '../pokemonApi.js';
+import db from '../db.js';
 
 const router = Router();
 
@@ -20,15 +21,32 @@ router.get('/sets', async (req, res) => {
   }
 });
 
-// GET /api/cards/search?q=&name=&set=&page=&pageSize=
+// GET /api/cards/search?q=&name=&set=&page=&pageSize=&sortBy=
+// sortBy: 'name-asc' (default) | 'name-desc' | 'number' | 'price-desc' | 'price-asc'
+// — served from the local card_cache when anything's cached for this filter
+// (sorted/paginated across the *whole* match set, not just one live page),
+// falling back to a live pokemontcg.io fetch only on a cache miss. See
+// searchCards()/localSearchCards() in pokemonApi.js.
 router.get('/search', async (req, res) => {
-  const { name, set, page = 1, pageSize = 32 } = req.query;
+  const { name, set, sortBy, page = 1, pageSize = 32 } = req.query;
   try {
-    const result = await searchCards({ name, set, page, pageSize });
+    const result = await searchCards({ name, set, sortBy, page, pageSize });
     res.json(result);
   } catch (e) {
     res.status(e.status || 500).json({ error: e.message });
   }
+});
+
+// GET /api/cards/sync-status - how much of the card database is cached
+// locally, and progress of the last backend/scripts/syncAllCards.js run (if
+// any), so coverage can be checked without watching terminal logs.
+router.get('/sync-status', (req, res) => {
+  const cachedCount = db.prepare('SELECT COUNT(*) AS c FROM card_cache').get().c;
+  const progressRow = db.prepare("SELECT data FROM api_cache WHERE cache_key = 'card-sync:progress'").get();
+  res.json({
+    cachedCount,
+    lastSyncProgress: progressRow ? JSON.parse(progressRow.data) : null,
+  });
 });
 
 // GET /api/cards/:id?force=true - single card, cached with TTL, fresh price data.

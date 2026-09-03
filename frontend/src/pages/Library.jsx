@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import CardTile from '../components/CardTile.jsx';
 import AddToCollectionModal from '../components/AddToCollectionModal.jsx';
 import { useCardSearch } from '../hooks/useCardSearch.js';
-import { SORT_OPTIONS, sortCards } from '../sortCards.js';
+import { SORT_OPTIONS } from '../sortCards.js';
 
 export default function Library({ onCollectionChanged }) {
   const {
@@ -10,6 +10,8 @@ export default function Library({ onCollectionChanged }) {
     setName,
     setId,
     setSetId,
+    sortBy,
+    setSortBy,
     sets,
     cards,
     page,
@@ -23,8 +25,6 @@ export default function Library({ onCollectionChanged }) {
     pageSize,
   } = useCardSearch();
   const [selectedCard, setSelectedCard] = useState(null);
-  const [sortBy, setSortBy] = useState('name-asc');
-  const sortedCards = useMemo(() => sortCards(cards, sortBy), [cards, sortBy]);
 
   return (
     <div className="page">
@@ -81,7 +81,7 @@ export default function Library({ onCollectionChanged }) {
       )}
 
       <div className="card-grid">
-        {sortedCards.map((card) => (
+        {cards.map((card) => (
           <CardTile key={card.id} card={card} onOpen={setSelectedCard} />
         ))}
       </div>

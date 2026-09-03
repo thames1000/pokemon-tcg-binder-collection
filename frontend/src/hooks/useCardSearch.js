@@ -15,6 +15,7 @@ const PAGE_SIZE = 250;
 export function useCardSearch({ skipInitialSearch = false } = {}) {
   const [name, setName] = useState('');
   const [setId, setSetId] = useState('');
+  const [sortBy, setSortByState] = useState('name-asc');
   const [sets, setSets] = useState([]);
   const [cards, setCards] = useState([]);
   const [page, setPage] = useState(1);
@@ -26,14 +27,20 @@ export function useCardSearch({ skipInitialSearch = false } = {}) {
     api.getSets().then(setSets).catch(() => {});
   }, []);
 
-  const runSearch = useCallback(async (searchName, searchSet, searchPage) => {
+  const runSearch = useCallback(async (searchName, searchSet, searchSortBy, searchPage) => {
     setLoading(true);
     setError(null);
     // Clear stale results immediately so a card from the previous search can't be
     // clicked (and its modal opened) while a new search is still in flight.
     setCards([]);
     try {
-      const data = await api.searchCards({ name: searchName, set: searchSet, page: searchPage, pageSize: PAGE_SIZE });
+      const data = await api.searchCards({
+        name: searchName,
+        set: searchSet,
+        sortBy: searchSortBy,
+        page: searchPage,
+        pageSize: PAGE_SIZE,
+      });
       setCards(data.cards);
       setTotalCount(data.totalCount);
     } catch (err) {
@@ -51,18 +58,28 @@ export function useCardSearch({ skipInitialSearch = false } = {}) {
       skippedInitialSearch.current = true;
       return;
     }
-    runSearch(name, setId, page);
+    runSearch(name, setId, sortBy, page);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
   function handleSearchSubmit(e) {
     e.preventDefault();
     setPage(1);
-    runSearch(name, setId, 1);
+    runSearch(name, setId, sortBy, 1);
   }
 
   function retry() {
-    runSearch(name, setId, page);
+    runSearch(name, setId, sortBy, page);
+  }
+
+  // Sorting changes the ordering of the *whole* matched set (server-side —
+  // see backend/pokemonApi.js's localSearchCards), not just what's already
+  // loaded, so it re-runs the search rather than re-sorting in place; treated
+  // like a new query, so it resets to page 1.
+  function setSortBy(newSortBy) {
+    setSortByState(newSortBy);
+    setPage(1);
+    runSearch(name, setId, newSortBy, 1);
   }
 
   // For a consumer that needs to search for a specific name right away (e.g. a
@@ -74,7 +91,7 @@ export function useCardSearch({ skipInitialSearch = false } = {}) {
     setName(searchName);
     setSetId(searchSet);
     setPage(1);
-    runSearch(searchName, searchSet, 1);
+    runSearch(searchName, searchSet, sortBy, 1);
   }
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
@@ -84,6 +101,8 @@ export function useCardSearch({ skipInitialSearch = false } = {}) {
     setName,
     setId,
     setSetId,
+    sortBy,
+    setSortBy,
     sets,
     cards,
     page,

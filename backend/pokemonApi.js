@@ -1,8 +1,33 @@
 import db from './db.js';
 import { fetchFallbackPrice } from './tcgdexApi.js';
+import { bestGuessPrice } from './pricing.js';
 
 const API_BASE = 'https://api.pokemontcg.io/v2';
 const CACHE_TTL_HOURS = 12;
+
+// Natural sort for printed card numbers ("1" < "2" < "10", "TG01" < "TG02",
+// etc.) — a plain string/SQL sort would put "10" before "2", so this can't be
+// expressed as a SQL ORDER BY; used to sort an already-fetched row set in JS.
+export function compareCardNumbers(a, b) {
+  const split = (s) => String(s ?? '').match(/(\d+|\D+)/g) || [];
+  const aParts = split(a);
+  const bParts = split(b);
+  const len = Math.max(aParts.length, bParts.length);
+  for (let i = 0; i < len; i++) {
+    const ap = aParts[i] ?? '';
+    const bp = bParts[i] ?? '';
+    const aNum = /^\d+$/.test(ap);
+    const bNum = /^\d+$/.test(bp);
+    if (aNum && bNum) {
+      const diff = Number(ap) - Number(bp);
+      if (diff !== 0) return diff;
+    } else {
+      const cmp = ap.localeCompare(bp);
+      if (cmp !== 0) return cmp;
+    }
+  }
+  return 0;
+}
 
 function apiHeaders() {
   const headers = {};
@@ -60,18 +85,38 @@ export function setApiCache(key, data) {
   ).run(key, JSON.stringify(data));
 }
 
+// Also populates name/set/number/price columns alongside the JSON blob so a
+// card can be found and sorted with a local SQL query (see localSearchCards)
+// instead of a live pokemontcg.io call. price_amount uses bestGuessPrice
+// (cheapest available variant), matching what CardTile actually displays —
+// sorting by a *different* selection than what's shown would look "wrong"
+// even though both are technically valid prices for the card.
 export function cacheCard(card) {
+  const price = bestGuessPrice(card);
   db.prepare(
-    `INSERT INTO card_cache (id, data, fetched_at) VALUES (?, ?, datetime('now'))
-     ON CONFLICT(id) DO UPDATE SET data = excluded.data, fetched_at = excluded.fetched_at`
-  ).run(card.id, JSON.stringify(card));
+    `INSERT INTO card_cache (id, data, fetched_at, name, set_id, set_name, number, price_amount, price_currency)
+     VALUES (?, ?, datetime('now'), ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       data = excluded.data, fetched_at = excluded.fetched_at, name = excluded.name,
+       set_id = excluded.set_id, set_name = excluded.set_name, number = excluded.number,
+       price_amount = excluded.price_amount, price_currency = excluded.price_currency`
+  ).run(
+    card.id,
+    JSON.stringify(card),
+    card.name ?? null,
+    card.set?.id ?? null,
+    card.set?.name ?? null,
+    card.number ?? null,
+    price?.amount ?? null,
+    price?.currency ?? null
+  );
 }
 
 export function getCachedCard(id) {
   const row = db.prepare('SELECT data, fetched_at FROM card_cache WHERE id = ?').get(id);
   if (!row) return null;
   const ageHours = (Date.now() - new Date(row.fetched_at + 'Z').getTime()) / 36e5;
-  return { card: JSON.parse(row.data), stale: ageHours > CACHE_TTL_HOURS };
+  return { card: { ...JSON.parse(row.data), pricesUpdatedAt: row.fetched_at }, stale: ageHours > CACHE_TTL_HOURS };
 }
 
 // pokemontcg.io has no price data of its own for some very recently released sets
@@ -96,6 +141,7 @@ export async function getCardById(id, { force = false } = {}) {
     const data = await fetchFromApi(`/cards/${id}`);
     const card = await withFallbackPrice(data.data);
     cacheCard(card);
+    card.pricesUpdatedAt = new Date().toISOString();
     return card;
   } catch (e) {
     if (cached) return cached.card;
@@ -103,10 +149,68 @@ export async function getCardById(id, { force = false } = {}) {
   }
 }
 
-// Search cards by name/set, cache-first (short TTL) with a stale-cache fallback.
-// Used by the search endpoint and by CSV import to resolve rows that only give a
-// card name (+ optional set/number) instead of a cardId.
-export async function searchCards({ name, set, page = 1, pageSize = 32 }) {
+// Search purely against the local card_cache — no network call. Powers
+// searchCards() below once a card's been cached at least once (by any path:
+// a live search, a single-card lookup, or the sync-cards script), and is what
+// makes "sort ALL matches, not just the current page" possible: name/price
+// sort is a plain indexed SQL ORDER BY (cheap at any result-set size), and
+// even "number" (natural sort, can't be expressed in SQL) sorts the full
+// local match set in JS rather than one live 250-card page.
+export function localSearchCards({ name, set, sortBy, page = 1, pageSize = 32 }) {
+  const where = [];
+  const params = [];
+  if (name) {
+    // Contains, not just prefix: pokemontcg.io's own live query (name:"X*")
+    // tokenizes on whitespace and effectively matches any *word* in the name
+    // starting with X (e.g. "charizard" matches "Mega Charizard"), which a
+    // whole-string prefix match here wouldn't. Contains is a superset of
+    // that and simpler to express in SQL — matches at least as much.
+    where.push('LOWER(name) LIKE \'%\' || LOWER(?) || \'%\'');
+    params.push(String(name).trim());
+  }
+  if (set) {
+    where.push('set_id = ?');
+    params.push(set);
+  }
+  const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+  const totalCount = db.prepare(`SELECT COUNT(*) AS c FROM card_cache ${whereClause}`).get(...params).c;
+  if (totalCount === 0) return { cards: [], totalCount: 0, page, pageSize };
+
+  let rows;
+  if (sortBy === 'number') {
+    // Natural sort can't be a SQL ORDER BY — pull the full match set (still a
+    // local indexed query even at ~20k rows) and sort/slice in JS.
+    const all = db.prepare(`SELECT id, data, fetched_at, number FROM card_cache ${whereClause}`).all(...params);
+    all.sort((a, b) => compareCardNumbers(a.number, b.number));
+    rows = all.slice((page - 1) * pageSize, (page - 1) * pageSize + pageSize);
+  } else {
+    const orderBy =
+      {
+        'name-desc': 'name COLLATE NOCASE DESC',
+        'price-desc': 'price_amount IS NULL, price_amount DESC',
+        'price-asc': 'price_amount IS NULL, price_amount ASC',
+      }[sortBy] || 'name COLLATE NOCASE ASC'; // default + 'name-asc'
+    rows = db
+      .prepare(`SELECT id, data, fetched_at FROM card_cache ${whereClause} ORDER BY ${orderBy} LIMIT ? OFFSET ?`)
+      .all(...params, pageSize, (page - 1) * pageSize);
+  }
+
+  const cards = rows.map((r) => ({ ...JSON.parse(r.data), pricesUpdatedAt: r.fetched_at }));
+  return { cards, totalCount, page, pageSize };
+}
+
+// Search cards by name/set, cache-first: a local card_cache query if it has
+// any matches (no network call at all — see localSearchCards), falling back
+// to a live pokemontcg.io fetch (short-TTL cached, stale-cache fallback on
+// error) only when nothing's cached yet for this filter — which also caches
+// the result for next time, so coverage only grows with use even before a
+// full sync has run. Used by the search endpoint, by fetchAllCardsForSet
+// (binder creation), and by CSV import to resolve name-only rows.
+export async function searchCards({ name, set, sortBy, page = 1, pageSize = 32 }) {
+  const local = localSearchCards({ name, set, sortBy, page, pageSize });
+  if (local.totalCount > 0) return local;
+
   const cacheKey = `search:${name || ''}:${set || ''}:${page}:${pageSize}`;
   const cached = getApiCache(cacheKey, 1);
   if (cached && !cached.stale) return cached.data;

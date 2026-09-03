@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import db from '../db.js';
-import { searchCards, fetchFromApi, getApiCache, setApiCache, cacheCard, withFallbackPrice } from '../pokemonApi.js';
+import { searchCards, fetchFromApi, getApiCache, setApiCache, cacheCard, withFallbackPrice, compareCardNumbers } from '../pokemonApi.js';
 import { cardMarketPrice } from '../pricing.js';
 import { NATIONAL_DEX } from '../nationalDex.js';
 
@@ -15,29 +15,6 @@ const SLOTS_PER_PAGE = SLOTS_PER_SIDE * 2; // front + back
 // which are already single, holo-only prints) defaults to 1. Fully overridable
 // per rarity in the New Binder modal before creating — this is just the seed.
 const DEFAULT_TWO_SLOT_RARITIES = new Set(['Common', 'Uncommon', 'Rare']);
-
-// Natural sort for printed card numbers ("1" < "2" < "10", "TG01" < "TG02", etc.)
-// so a set fills into a binder in the same order the physical cards are numbered.
-function compareCardNumbers(a, b) {
-  const split = (s) => String(s ?? '').match(/(\d+|\D+)/g) || [];
-  const aParts = split(a);
-  const bParts = split(b);
-  const len = Math.max(aParts.length, bParts.length);
-  for (let i = 0; i < len; i++) {
-    const ap = aParts[i] ?? '';
-    const bp = bParts[i] ?? '';
-    const aNum = /^\d+$/.test(ap);
-    const bNum = /^\d+$/.test(bp);
-    if (aNum && bNum) {
-      const diff = Number(ap) - Number(bp);
-      if (diff !== 0) return diff;
-    } else {
-      const cmp = ap.localeCompare(bp);
-      if (cmp !== 0) return cmp;
-    }
-  }
-  return 0;
-}
 
 const isPromoRarity = (rarity) => /promo/i.test(rarity || '');
 
@@ -165,14 +142,15 @@ const ownedStmt = db.prepare(
 );
 const isSlotOwned = (cardId, variant) => !!ownedStmt.get(cardId, variant ?? null, variant ?? null);
 
-const cardCacheStmt = db.prepare('SELECT data FROM card_cache WHERE id = ?');
+const cardCacheStmt = db.prepare('SELECT data, fetched_at FROM card_cache WHERE id = ?');
 // Prefer freshly-cached card data (which gets refreshed periodically / on
 // "Refresh price") over the snapshot frozen at the moment a slot was filled,
 // same as the collection page does — a binder built weeks ago shouldn't quote
 // a price from weeks ago when a live one is available.
 function latestCardData(cardId, fallbackSnapshot) {
   const cached = cardCacheStmt.get(cardId);
-  return cached ? JSON.parse(cached.data) : fallbackSnapshot;
+  if (!cached) return fallbackSnapshot;
+  return { ...JSON.parse(cached.data), pricesUpdatedAt: cached.fetched_at };
 }
 
 // Estimated cost to finish a binder: sum of current market price across every

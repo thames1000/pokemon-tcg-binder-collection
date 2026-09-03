@@ -57,3 +57,30 @@ export function cardMarketPrice(card, variant) {
 
   return null;
 }
+
+// A single sortable "how much is this card worth" number, used only to
+// populate card_cache's indexed price_amount column (see pokemonApi.js's
+// cacheCard/localSearchCards) — mirrors frontend/src/pricing.js's bestPrice()
+// exactly (cheapest available TCGplayer variant, not just "any bucket") so
+// the price search results are *sorted* by matches what's actually
+// *displayed* on each card tile. Deliberately separate from
+// cardMarketPrice(card, null) above, whose "any available bucket" choice is
+// intentional for its own callers (a plain browsing badge, a slot with no
+// planned variant) — this only feeds the sort index.
+export function bestGuessPrice(card) {
+  if (!card) return null;
+  const tcg = card.tcgplayer?.prices;
+  if (tcg) {
+    const cheapest = Object.values(tcg)
+      .filter((v) => v?.market != null)
+      .sort((a, b) => a.market - b.market)[0];
+    if (cheapest) return { amount: cheapest.market, currency: 'USD' };
+  }
+  const cm = card.cardmarket?.prices;
+  if (cm?.trendPrice != null) return { amount: cm.trendPrice, currency: 'EUR' };
+  if (cm?.averageSellPrice != null) return { amount: cm.averageSellPrice, currency: 'EUR' };
+  if (card.priceFallback?.amount != null) {
+    return { amount: card.priceFallback.amount, currency: card.priceFallback.currency || 'USD' };
+  }
+  return null;
+}

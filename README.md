@@ -12,7 +12,8 @@ no subscription.
   so filtering by set means scrolling through the whole thing rather than clicking through
   several pages of 32. Sort results by name, card number (natural order — "2" before "10"),
   or price (high-to-low or low-to-high; cards with no price data always sort to the bottom,
-  never treated as worth $0).
+  never treated as worth $0) — sorting covers the *entire* matched set once it's cached
+  (see "Cache-first search" below), not just the current page.
 - **My Collection** — add cards you own with quantity, condition, variant (normal/holofoil/
   reverse holo/1st edition/…), price paid, and notes. Edit or remove anytime.
 - **Price Lookup** — a dedicated view to check a card's current price without the pressure of
@@ -97,10 +98,34 @@ Pokémon) — so it reaches every price shown in the app: Library, Price Lookup,
 estimates alike. If TCGdex is also unreachable or has no match, the card just shows "No price
 data available" — never a fabricated price.
 
+### Cache-first search
+
+Every card ever fetched (by any path — a search, a binder auto-fill, a single-card lookup) is
+cached locally in `card_cache`, indexed by name/set/number/price. A search is served straight
+from that local cache — no live pokemontcg.io call, and sorting/pagination cover the *whole*
+matched set, not just one 250-card page — and only falls back to a live fetch (which then caches
+the result for next time) when nothing's cached yet for that filter. A card's price panel shows
+"Prices last updated `<time>`" from this cache, and "↻ Refresh price" is still there whenever you
+want a live re-check for one specific card.
+
+To pre-warm the entire database (recommended once, and again after a new set releases) rather
+than letting the cache fill in gradually from ordinary browsing:
+```bash
+cd backend
+npm run sync-cards            # resumes automatically if interrupted
+npm run sync-cards -- --restart   # ignore saved progress, start over from page 1
+```
+This is a deliberate, potentially long-running pull (~80+ requests against the live API, plus a
+TCGdex lookup for every card that gap affects) — it's not run automatically on `npm start`.
+Progress is saved after every page, so Ctrl+C (or a crash, or a persistent upstream failure) just
+means the next run picks up where it left off. `GET /api/cards/sync-status` reports how many
+cards are cached and the last run's progress, if you'd rather check that than watch the logs.
+
 ## Data model
 
 - `card_cache` — a local cache of card data (including prices) pulled from the API, refreshed
-  every 12 hours per card (or on demand via "Refresh price").
+  every 12 hours per card (or on demand via "Refresh price"). Also indexed by name/set/number/
+  price so search/sort can run as a local SQL query — see "Cache-first search" above.
 - `api_cache` — a generic cache for endpoints without a natural per-row cache (`/sets`,
   `/search`), so a transient upstream outage serves stale-but-known-good data instead of an error.
 - `collection_items` — the cards you own: card id, quantity, condition, variant, price paid,
@@ -120,8 +145,9 @@ data available" — never a fabricated price.
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/api/cards/search?name=&set=&page=&pageSize=` | Search the card library |
+| GET | `/api/cards/search?name=&set=&page=&pageSize=&sortBy=` | Search the card library — cache-first, see "Cache-first search" above. `sortBy`: `name-asc` (default) \| `name-desc` \| `number` \| `price-desc` \| `price-asc` |
 | GET | `/api/cards/sets` | List all sets (for the filter dropdown) |
+| GET | `/api/cards/sync-status` | How many cards are cached locally, and progress of the last `npm run sync-cards` |
 | GET | `/api/cards/:id?force=` | Get one card (cached; `force=true` bypasses the cache) |
 | GET | `/api/collection` | List owned cards with current price/value |
 | GET | `/api/collection/value` | Collection totals (also records today's value snapshot) |
