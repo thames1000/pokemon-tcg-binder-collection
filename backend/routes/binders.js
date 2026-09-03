@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import db from '../db.js';
-import { searchCards, fetchFromApi, getApiCache, setApiCache } from '../pokemonApi.js';
+import { searchCards, fetchFromApi, getApiCache, setApiCache, cacheCard, withFallbackPrice } from '../pokemonApi.js';
 import { cardMarketPrice } from '../pricing.js';
 import { NATIONAL_DEX } from '../nationalDex.js';
 
@@ -81,6 +81,15 @@ async function fetchAllCardsForPokemon(pokemonName) {
     page++;
   }
   allCards = allCards.filter((c) => c.supertype === 'Pokémon');
+  // Unlike fetchAllCardsForSet (which goes through searchCards, and so already
+  // gets this), these cards come straight from fetchFromApi — enrich each with
+  // the TCGdex fallback price and cache it, same as every other card-fetching
+  // path, so a Pokémon-mode binder's estimate isn't missing prices simply
+  // because this was the one path that skipped it.
+  for (const card of allCards) {
+    await withFallbackPrice(card);
+    cacheCard(card);
+  }
   allCards.sort((a, b) => {
     const dateA = a.set?.releaseDate || '';
     const dateB = b.set?.releaseDate || '';

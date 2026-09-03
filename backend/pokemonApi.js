@@ -79,7 +79,7 @@ export function getCachedCard(id) {
 // When a freshly-fetched card has neither TCGplayer nor Cardmarket prices, try
 // TCGdex as a fallback and attach whatever it finds so it gets cached alongside
 // the card — a no-op for the vast majority of cards that already have pricing.
-async function withFallbackPrice(card) {
+export async function withFallbackPrice(card) {
   if (!card || card.tcgplayer?.prices || card.cardmarket?.prices) return card;
   const fallback = await fetchFallbackPrice({ name: card.name, setName: card.set?.name, number: card.number });
   if (fallback) card.priceFallback = fallback;

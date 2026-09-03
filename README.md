@@ -85,12 +85,17 @@ the API is unreachable.
 
 ### Missing prices on very new cards
 
-pokemontcg.io's own price sync appears to have stopped covering newly released sets (its
-maintainers have shifted focus to a paid successor product) — cards from recent sets can come
-back with no TCGplayer/Cardmarket data at all. When that happens, the backend tries
+The Pokémon TCG API is now part of [Scrydex](https://scrydex.com) — a paid product (plans start
+at $29/mo, no free tier) — and pokemontcg.io's free API has stopped embedding TCGplayer/
+Cardmarket price data for newer sets: a card's `tcgplayer` field comes back with only a redirect
+URL to its TCGplayer listing, no `prices` object. By design, this app doesn't require a Scrydex
+subscription: when a card has no embedded pricing, the backend tries
 [TCGdex](https://tcgdex.dev) (free, no key) as a fallback, matching the card by name + set +
-number since it's a separate database with its own IDs. If TCGdex is also unreachable or has no
-match, the card just shows "No price data available" — never a fabricated price.
+number since it's a separate database with its own IDs. This fallback is applied everywhere a
+card is fetched — search, single-card lookup, and both binder auto-fill modes (by set and by
+Pokémon) — so it reaches every price shown in the app: Library, Price Lookup, and binder slots/
+estimates alike. If TCGdex is also unreachable or has no match, the card just shows "No price
+data available" — never a fabricated price.
 
 ## Data model
 
