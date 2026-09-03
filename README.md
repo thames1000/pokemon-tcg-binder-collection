@@ -121,15 +121,22 @@ To run that sync (recommended once, and again after a new set releases):
 ```bash
 cd backend
 npm run sync-cards            # resumes automatically if interrupted
-npm run sync-cards -- --restart   # ignore saved progress, start over from page 1
+npm run sync-cards -- --restart   # ignore saved progress, start over from set 1
 ```
-This is a deliberate, potentially long-running pull (~80+ requests against the live API, plus a
-TCGdex lookup for every card that gap affects) — it's not run automatically on `npm start`, and
-search stays fully live and correct the whole time it's running. Progress is saved after every
-page, so Ctrl+C (or a crash, or a persistent upstream failure) just means the next run picks up
-where it left off — cache-first mode only turns on once a run actually reaches the last page.
-`GET /api/cards/sync-status` reports cached-card count, last run's progress, and whether
-cache-first mode is currently on, if you'd rather check that than watch the logs.
+It walks every set one at a time (rather than flat-paginating the whole ~20,000-card catalog by
+offset) — pokemontcg.io's deep-offset pagination has been unreliable during this project's
+Scrydex migration, and since almost every set has under 250 cards, going set-by-set keeps each
+request's offset near 0, which has held up far better in practice. This is still a deliberate,
+potentially long-running pull (170+ requests, one or more per set, plus a TCGdex lookup for every
+card that gap affects) — it's not run automatically on `npm start`, and search stays fully live
+and correct the whole time it's running. Progress is saved after every set, so Ctrl+C (or a
+crash, or a persistent upstream failure) just means the next run picks up at the right set —
+cache-first mode only turns on once a run actually gets through every set. `GET
+/api/cards/sync-status` reports cached-card count, last run's progress, and whether cache-first
+mode is currently on, if you'd rather check that than watch the logs. pokemontcg.io's API has
+been especially flaky lately (frequent 400/500/502s, even on a valid key) — a run may need to be
+re-launched several times to make it all the way through; each attempt still makes forward
+progress rather than losing it.
 
 A card's price panel always shows "Prices last updated `<time>`" from whatever's cached for it
 (live or not), and "↻ Refresh price" is still there whenever you want a live re-check for one
