@@ -11,6 +11,10 @@ export default function CardPriceTable({ card, onCardUpdated }) {
 
   const variants = tcgplayerVariants(card);
   const cardmarket = card.cardmarket?.prices;
+  // Only ever set when pokemontcg.io has neither TCGplayer nor Cardmarket data for
+  // this card (common for very recently released sets — see README) — a TCGdex
+  // fallback price, if one was found. See backend/tcgdexApi.js.
+  const fallback = variants.length === 0 && !cardmarket ? card.priceFallback : null;
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -67,7 +71,16 @@ export default function CardPriceTable({ card, onCardUpdated }) {
           )}
         </>
       )}
-      {variants.length === 0 && !cardmarket && <p className="muted">No price data available for this card yet.</p>}
+      {fallback && (
+        <p className="cardmarket-line">
+          {fallback.source || 'TCGdex'}: {fallback.currency === 'EUR' ? '€' : '$'}
+          {fallback.amount.toFixed(2)}
+          <span className="muted"> (pokemontcg.io has no pricing yet for this card)</span>
+        </p>
+      )}
+      {variants.length === 0 && !cardmarket && !fallback && (
+        <p className="muted">No price data available for this card yet.</p>
+      )}
 
       {refreshError && <p className="error-text">{refreshError}</p>}
       {refreshedAt && !refreshError && (

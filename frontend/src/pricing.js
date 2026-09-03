@@ -37,5 +37,13 @@ export function bestPrice(card) {
   if (cm?.averageSellPrice != null) {
     return { amount: cm.averageSellPrice, currency: 'EUR', source: 'Cardmarket', label: 'Average' };
   }
+  // pokemontcg.io has no pricing at all for this card (common for very recently
+  // released sets) — see backend/tcgdexApi.js. card.priceFallback is only ever
+  // set when neither bucket above had anything, so it's safe to fall through to
+  // unconditionally rather than re-checking that here.
+  if (card?.priceFallback?.amount != null) {
+    const { amount, currency, source } = card.priceFallback;
+    return { amount, currency: currency || 'USD', source: source || 'TCGdex', label: null };
+  }
   return null;
 }
