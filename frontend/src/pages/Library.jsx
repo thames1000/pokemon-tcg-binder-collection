@@ -19,6 +19,7 @@ export default function Library({ onCollectionChanged }) {
     error,
     handleSearchSubmit,
     retry,
+    pageSize,
   } = useCardSearch();
   const [selectedCard, setSelectedCard] = useState(null);
 
@@ -67,13 +68,13 @@ export default function Library({ onCollectionChanged }) {
         ))}
       </div>
 
-      {totalCount > 32 && (
+      {totalCount > pageSize && (
         <div className="pagination">
           <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
             ← Prev
           </button>
           <span>
-            Page {page} of {totalPages}
+            Page {page} of {totalPages} ({totalCount} cards)
           </span>
           <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
             Next →

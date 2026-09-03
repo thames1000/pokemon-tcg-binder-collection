@@ -16,7 +16,7 @@ export default function BinderSlotModal({ binderId, position, slot, onClose, onC
 
   const {
     name, setName, setId, setSetId, sets, cards, page, setPage,
-    totalCount, totalPages, loading, error: searchError, handleSearchSubmit, retry,
+    totalCount, totalPages, loading, error: searchError, handleSearchSubmit, retry, pageSize,
   } = useCardSearch();
 
   async function place(card) {
@@ -182,7 +182,7 @@ export default function BinderSlotModal({ binderId, position, slot, onClose, onC
               ))}
             </div>
 
-            {totalCount > 32 && (
+            {totalCount > pageSize && (
               <div className="pagination">
                 <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
                   ← Prev

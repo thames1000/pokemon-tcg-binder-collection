@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api.js';
 
-const PAGE_SIZE = 32;
+// 250 is the pokemontcg.io API's own per-request maximum — most sets have
+// well under 250 cards, so filtering by set fits the whole set on one "page"
+// and can just be scrolled through instead of clicking through many pages.
+const PAGE_SIZE = 250;
 
 // Shared search/browse state + logic used by both the Library and Price Lookup pages.
 export function useCardSearch() {

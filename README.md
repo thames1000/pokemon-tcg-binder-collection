@@ -7,7 +7,10 @@ no subscription.
 
 ## Features
 
-- **Library** — search/browse every Pokémon TCG card ever printed, filter by set.
+- **Library** — search/browse every Pokémon TCG card ever printed, filter by set. Up to 250
+  results per page (pokemontcg.io's own per-request cap) — most sets fit entirely on one page,
+  so filtering by set means scrolling through the whole thing rather than clicking through
+  several pages of 32.
 - **My Collection** — add cards you own with quantity, condition, variant (normal/holofoil/
   reverse holo/1st edition/…), price paid, and notes. Edit or remove anytime.
 - **Price Lookup** — a dedicated view to check a card's current price without the pressure of
