@@ -232,7 +232,10 @@ export async function searchCards({ name, set, sortBy, page = 1, pageSize = 32 }
     return localSearchCards({ name, set, sortBy, page, pageSize });
   }
 
-  const cacheKey = `search:${name || ''}:${set || ''}:${page}:${pageSize}`;
+  // sortBy is part of the cache key here (unlike the rest of the query) so a
+  // "price-desc" result never gets served back for a later "name-asc" search
+  // of the same name/set/page within the 1h TTL.
+  const cacheKey = `search:${name || ''}:${set || ''}:${sortBy || ''}:${page}:${pageSize}`;
   const cached = getApiCache(cacheKey, 1);
   if (cached && !cached.stale) return cached.data;
 
@@ -246,12 +249,36 @@ export async function searchCards({ name, set, sortBy, page = 1, pageSize = 32 }
       await withFallbackPrice(card);
       cacheCard(card);
     }
-    const result = { cards: data.data, totalCount: data.totalCount, page: data.page, pageSize: data.pageSize };
+    // pokemontcg.io's own query only ever returns name order — sortBy is
+    // applied here, in memory, over just this one live page. It's a smaller
+    // guarantee than localSearchCards's whole-match-set sort (this can't see
+    // cards on other pages), but it's what's actually achievable pre-sync,
+    // and "sort does nothing" was worse than "sort works within this page."
+    const cards = sortCardsInMemory(data.data, sortBy);
+    const result = { cards, totalCount: data.totalCount, page: data.page, pageSize: data.pageSize };
     setApiCache(cacheKey, result);
     return result;
   } catch (e) {
     if (cached) return cached.data;
     throw e;
+  }
+}
+
+function sortCardsInMemory(cards, sortBy) {
+  const priceOf = (c) => bestGuessPrice(c)?.amount;
+  const sorted = [...cards];
+  switch (sortBy) {
+    case 'name-desc':
+      return sorted.sort((a, b) => b.name.localeCompare(a.name));
+    case 'number':
+      return sorted.sort((a, b) => compareCardNumbers(a.number, b.number));
+    case 'price-desc':
+      return sorted.sort((a, b) => (priceOf(b) ?? -Infinity) - (priceOf(a) ?? -Infinity));
+    case 'price-asc':
+      return sorted.sort((a, b) => (priceOf(a) ?? Infinity) - (priceOf(b) ?? Infinity));
+    case 'name-asc':
+    default:
+      return sorted.sort((a, b) => a.name.localeCompare(b.name));
   }
 }
 

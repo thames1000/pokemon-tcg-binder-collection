@@ -27,7 +27,20 @@ export function useCardSearch({ skipInitialSearch = false } = {}) {
     api.getSets().then(setSets).catch(() => {});
   }, []);
 
+  // Guards against *any* two overlapping searches resolving out of order —
+  // not just the mount-vs-explicit-search case skipInitialSearch was built
+  // for, but rapid sort changes, page clicks, etc. too. Each runSearch call
+  // claims the next sequence number; only the response matching the
+  // *current* (i.e. most recently started) number is ever applied to state,
+  // so a slow, late-resolving older request can't clobber a newer one's
+  // results — regardless of which one's network call actually finishes
+  // first. Especially important right now since pokemontcg.io's live API is
+  // frequently slow/erroring (see backend's fetchFromApi retry logic),
+  // which makes response ordering unpredictable.
+  const requestSeqRef = useRef(0);
+
   const runSearch = useCallback(async (searchName, searchSet, searchSortBy, searchPage) => {
+    const seq = ++requestSeqRef.current;
     setLoading(true);
     setError(null);
     // Clear stale results immediately so a card from the previous search can't be
@@ -41,14 +54,16 @@ export function useCardSearch({ skipInitialSearch = false } = {}) {
         page: searchPage,
         pageSize: PAGE_SIZE,
       });
+      if (seq !== requestSeqRef.current) return; // superseded by a newer search
       setCards(data.cards);
       setTotalCount(data.totalCount);
     } catch (err) {
+      if (seq !== requestSeqRef.current) return;
       setError(err.message);
       setCards([]);
       setTotalCount(0);
     } finally {
-      setLoading(false);
+      if (seq === requestSeqRef.current) setLoading(false);
     }
   }, []);
 
