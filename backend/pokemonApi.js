@@ -200,16 +200,37 @@ export function localSearchCards({ name, set, sortBy, page = 1, pageSize = 32 })
   return { cards, totalCount, page, pageSize };
 }
 
-// Search cards by name/set, cache-first: a local card_cache query if it has
-// any matches (no network call at all — see localSearchCards), falling back
-// to a live pokemontcg.io fetch (short-TTL cached, stale-cache fallback on
-// error) only when nothing's cached yet for this filter — which also caches
-// the result for next time, so coverage only grows with use even before a
-// full sync has run. Used by the search endpoint, by fetchAllCardsForSet
+const SYNC_COMPLETE_KEY = 'card-sync:completed';
+
+// True once a full backend/scripts/syncAllCards.js run has finished at least
+// once — only then is card_cache guaranteed to hold *every* card matching a
+// given filter, not just whatever's been incidentally browsed so far.
+// Trusting a partial local cache as complete (a query with *any* local match
+// = "we have them all") silently truncates results — e.g. a set with 180
+// cards where only 6 happen to have been looked up before would report 6.
+// So searchCards() below stays fully live until this flips.
+export function hasCompletedFullSync() {
+  return !!getApiCache(SYNC_COMPLETE_KEY, Infinity);
+}
+
+export function markFullSyncComplete(totalCount) {
+  setApiCache(SYNC_COMPLETE_KEY, { completedAt: new Date().toISOString(), totalCount });
+}
+
+// Search cards by name/set. Once a full sync has completed (see
+// hasCompletedFullSync above), served entirely from the local card_cache —
+// no network call, and sorting/pagination cover the whole matched set (see
+// localSearchCards). Until then, always live (pokemontcg.io's own totalCount
+// is the only thing that can be trusted as complete pre-sync), short-TTL
+// cached with a stale-cache fallback on error — same as before this turn's
+// change — while every result still gets cached opportunistically, so
+// coverage keeps growing and the switch to cache-first is seamless once
+// sync-cards finishes. Used by the search endpoint, by fetchAllCardsForSet
 // (binder creation), and by CSV import to resolve name-only rows.
 export async function searchCards({ name, set, sortBy, page = 1, pageSize = 32 }) {
-  const local = localSearchCards({ name, set, sortBy, page, pageSize });
-  if (local.totalCount > 0) return local;
+  if (hasCompletedFullSync()) {
+    return localSearchCards({ name, set, sortBy, page, pageSize });
+  }
 
   const cacheKey = `search:${name || ''}:${set || ''}:${page}:${pageSize}`;
   const cached = getApiCache(cacheKey, 1);

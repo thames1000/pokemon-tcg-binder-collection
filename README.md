@@ -101,25 +101,39 @@ data available" — never a fabricated price.
 ### Cache-first search
 
 Every card ever fetched (by any path — a search, a binder auto-fill, a single-card lookup) is
-cached locally in `card_cache`, indexed by name/set/number/price. A search is served straight
-from that local cache — no live pokemontcg.io call, and sorting/pagination cover the *whole*
-matched set, not just one 250-card page — and only falls back to a live fetch (which then caches
-the result for next time) when nothing's cached yet for that filter. A card's price panel shows
-"Prices last updated `<time>`" from this cache, and "↻ Refresh price" is still there whenever you
-want a live re-check for one specific card.
+cached locally in `card_cache`, indexed by name/set/number/price so it *can* be searched/sorted
+with a local SQL query instead of a live pokemontcg.io call. Whether a search actually is served
+that way depends on one thing: **has a full sync completed at least once?**
 
-To pre-warm the entire database (recommended once, and again after a new set releases) rather
-than letting the cache fill in gradually from ordinary browsing:
+- **No** (the default, until you run the sync below): every search is live — same as
+  pokemontcg.io's own results, nothing truncated — while still opportunistically caching
+  everything it sees, so coverage grows with ordinary use. Sorting only covers the current page
+  in this mode (it's what pokemontcg.io's own query returns).
+- **Yes**: every search is served from the local cache — no live call, and sorting/pagination
+  cover the *whole* matched set, not just one 250-card page.
+
+Trusting a partial cache as "complete" the moment it has *any* match for a query is the wrong
+call — it silently truncates results (a set with 180 cards where only 6 happened to be cached
+looks like a 6-card set). So cache-first mode only turns on once a sync has actually walked the
+entire database and confirmed there are no gaps left.
+
+To run that sync (recommended once, and again after a new set releases):
 ```bash
 cd backend
 npm run sync-cards            # resumes automatically if interrupted
 npm run sync-cards -- --restart   # ignore saved progress, start over from page 1
 ```
 This is a deliberate, potentially long-running pull (~80+ requests against the live API, plus a
-TCGdex lookup for every card that gap affects) — it's not run automatically on `npm start`.
-Progress is saved after every page, so Ctrl+C (or a crash, or a persistent upstream failure) just
-means the next run picks up where it left off. `GET /api/cards/sync-status` reports how many
-cards are cached and the last run's progress, if you'd rather check that than watch the logs.
+TCGdex lookup for every card that gap affects) — it's not run automatically on `npm start`, and
+search stays fully live and correct the whole time it's running. Progress is saved after every
+page, so Ctrl+C (or a crash, or a persistent upstream failure) just means the next run picks up
+where it left off — cache-first mode only turns on once a run actually reaches the last page.
+`GET /api/cards/sync-status` reports cached-card count, last run's progress, and whether
+cache-first mode is currently on, if you'd rather check that than watch the logs.
+
+A card's price panel always shows "Prices last updated `<time>`" from whatever's cached for it
+(live or not), and "↻ Refresh price" is still there whenever you want a live re-check for one
+specific card regardless of mode.
 
 ## Data model
 

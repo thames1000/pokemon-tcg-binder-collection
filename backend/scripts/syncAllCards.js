@@ -11,7 +11,7 @@
 // run (Ctrl+C, a crash, a persistent upstream failure) picks back up at the
 // right page next time instead of starting over.
 import 'dotenv/config';
-import { fetchFromApi, withFallbackPrice, cacheCard, getApiCache, setApiCache } from '../pokemonApi.js';
+import { fetchFromApi, withFallbackPrice, cacheCard, getApiCache, setApiCache, markFullSyncComplete } from '../pokemonApi.js';
 
 const PAGE_SIZE = 250;
 const PROGRESS_KEY = 'card-sync:progress';
@@ -55,7 +55,12 @@ async function main() {
     page++;
   }
 
-  console.log(`Done: ${synced}/${totalCount} cards cached.`);
+  // Only now — having actually reached the last page — is it safe for
+  // searchCards() to trust the local cache as complete for any query. Marked
+  // here rather than after every page precisely so an interrupted run
+  // doesn't flip this early.
+  markFullSyncComplete(totalCount);
+  console.log(`Done: ${synced}/${totalCount} cards cached. Search now serves entirely from the local cache.`);
 }
 
 main().catch((e) => {

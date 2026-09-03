@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { fetchFromApi, getApiCache, setApiCache, getCardById, searchCards } from '../pokemonApi.js';
+import { fetchFromApi, getApiCache, setApiCache, getCardById, searchCards, hasCompletedFullSync } from '../pokemonApi.js';
 import db from '../db.js';
 
 const router = Router();
@@ -23,10 +23,11 @@ router.get('/sets', async (req, res) => {
 
 // GET /api/cards/search?q=&name=&set=&page=&pageSize=&sortBy=
 // sortBy: 'name-asc' (default) | 'name-desc' | 'number' | 'price-desc' | 'price-asc'
-// — served from the local card_cache when anything's cached for this filter
-// (sorted/paginated across the *whole* match set, not just one live page),
-// falling back to a live pokemontcg.io fetch only on a cache miss. See
-// searchCards()/localSearchCards() in pokemonApi.js.
+// — served entirely from the local card_cache (sorted/paginated across the
+// *whole* match set) once a full `npm run sync-cards` has completed; live
+// (matching pokemontcg.io's own results) until then, so results are never
+// silently truncated to whatever's been incidentally cached so far. See
+// searchCards()/localSearchCards()/hasCompletedFullSync() in pokemonApi.js.
 router.get('/search', async (req, res) => {
   const { name, set, sortBy, page = 1, pageSize = 32 } = req.query;
   try {
@@ -46,6 +47,9 @@ router.get('/sync-status', (req, res) => {
   res.json({
     cachedCount,
     lastSyncProgress: progressRow ? JSON.parse(progressRow.data) : null,
+    // Whether search is currently served from the local cache (true) or live
+    // pokemontcg.io (false) — see hasCompletedFullSync() in pokemonApi.js.
+    fullSyncComplete: hasCompletedFullSync(),
   });
 });
 
