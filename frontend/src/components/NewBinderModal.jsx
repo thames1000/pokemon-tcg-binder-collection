@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 
 const SLOTS_PER_PAGE = 18; // 3x3 front + 3x3 back
+const NATIONAL_DEX_SIZE = 1025;
 
 export default function NewBinderModal({ onClose, onCreated }) {
   const [name, setName] = useState('');
-  const [mode, setMode] = useState('manual'); // 'manual' | 'set' | 'pokemon'
+  const [mode, setMode] = useState('manual'); // 'manual' | 'set' | 'pokemon' | 'dex'
   const [pageCount, setPageCount] = useState(4);
   const [sets, setSets] = useState([]);
   const [setId, setSetId] = useState('');
@@ -81,6 +82,8 @@ export default function NewBinderModal({ onClose, onCreated }) {
         payload = { name: name.trim(), mode: 'set', setId, excludePromos, rarityRules };
       } else if (mode === 'pokemon') {
         payload = { name: name.trim(), mode: 'pokemon', pokemonName: pokemonName.trim(), excludePromos, rarityRules };
+      } else if (mode === 'dex') {
+        payload = { name: name.trim(), mode: 'dex' };
       } else {
         payload = { name: name.trim(), mode: 'manual', pageCount: Number(pageCount) };
       }
@@ -119,6 +122,9 @@ export default function NewBinderModal({ onClose, onCreated }) {
             </button>
             <button type="button" className={mode === 'pokemon' ? 'btn-mode active' : 'btn-mode'} onClick={() => setMode('pokemon')}>
               Every card of a Pokémon
+            </button>
+            <button type="button" className={mode === 'dex' ? 'btn-mode active' : 'btn-mode'} onClick={() => setMode('dex')}>
+              National Dex
             </button>
           </div>
 
@@ -167,6 +173,20 @@ export default function NewBinderModal({ onClose, onCreated }) {
               Every Pokémon-type card whose name contains this (VMAX, ex, GX, Dark/Shining/Radiant variants, tag-team
               cards, etc.) across every set ever printed, oldest first.
             </p>
+          )}
+
+          {mode === 'dex' && (
+            <div className="rarity-rules">
+              <p style={{ margin: 0, fontWeight: 400 }}>
+                One slot per National Dex number, #1 (Bulbasaur) through #{NATIONAL_DEX_SIZE} (Pecharunt) —{' '}
+                <strong>{Math.ceil(NATIONAL_DEX_SIZE / SLOTS_PER_PAGE)} pages</strong> (
+                {Math.ceil(NATIONAL_DEX_SIZE / SLOTS_PER_PAGE) * SLOTS_PER_PAGE} pockets).
+              </p>
+              <p className="muted" style={{ marginBottom: 0 }}>
+                Starts completely empty — each slot is labeled with its number and species so you know exactly where
+                a card goes once you get one, whichever print it happens to be.
+              </p>
+            </div>
           )}
 
           {previewLoading && <p className="muted">Loading rarity breakdown…</p>}

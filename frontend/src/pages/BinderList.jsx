@@ -61,6 +61,7 @@ export default function BinderList() {
                 <div className="muted">
                   {b.sourceSetName ? `${b.sourceSetName} · ` : ''}
                   {b.sourcePokemonName ? `Every ${b.sourcePokemonName} card · ` : ''}
+                  {b.isNationalDex ? 'National Dex · ' : ''}
                   {b.pageCount} page{b.pageCount === 1 ? '' : 's'} · {b.filledSlots} planned
                 </div>
                 <div className="muted">

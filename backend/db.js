@@ -69,13 +69,17 @@ db.exec(`
   -- A planned physical binder: pageCount pages, each page = a front side + a back
   -- side of a 3x3 (9-pocket) sheet, so 18 slots per page. sourceSetId/sourceSetName
   -- are set when auto-filled from a full set; source_pokemon_name when auto-filled
-  -- from every card of one Pokémon; all null for a manual binder.
+  -- from every card of one Pokémon; is_national_dex when every slot is reserved for
+  -- a National Dex number but not yet assigned an actual card (see nationalDex.js —
+  -- the label for an empty slot is computed from its position, never stored); all
+  -- of these are unset for a manual binder.
   CREATE TABLE IF NOT EXISTS binders (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     source_set_id TEXT,
     source_set_name TEXT,
     source_pokemon_name TEXT,
+    is_national_dex INTEGER NOT NULL DEFAULT 0,
     page_count INTEGER NOT NULL DEFAULT 4,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -104,6 +108,7 @@ db.exec(`
 for (const stmt of [
   'ALTER TABLE binder_slots ADD COLUMN variant TEXT',
   'ALTER TABLE binders ADD COLUMN source_pokemon_name TEXT',
+  'ALTER TABLE binders ADD COLUMN is_national_dex INTEGER NOT NULL DEFAULT 0',
 ]) {
   try {
     db.exec(stmt);

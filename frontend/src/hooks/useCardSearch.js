@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 
 // 250 is the pokemontcg.io API's own per-request maximum — most sets have
@@ -6,8 +6,13 @@ import { api } from '../api.js';
 // and can just be scrolled through instead of clicking through many pages.
 const PAGE_SIZE = 250;
 
-// Shared search/browse state + logic used by both the Library and Price Lookup pages.
-export function useCardSearch() {
+// Shared search/browse state + logic used by both the Library and Price Lookup
+// pages. skipInitialSearch: for a consumer that's about to call searchFor()
+// itself right after mount (e.g. a modal pre-filling a specific name) — without
+// this, the hook's own unfiltered mount-time search and that explicit search
+// race each other, and whichever network request resolves last wins, silently
+// showing results that don't match what's in the search box.
+export function useCardSearch({ skipInitialSearch = false } = {}) {
   const [name, setName] = useState('');
   const [setId, setSetId] = useState('');
   const [sets, setSets] = useState([]);
@@ -40,7 +45,12 @@ export function useCardSearch() {
     }
   }, []);
 
+  const skippedInitialSearch = useRef(false);
   useEffect(() => {
+    if (skipInitialSearch && !skippedInitialSearch.current) {
+      skippedInitialSearch.current = true;
+      return;
+    }
     runSearch(name, setId, page);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
@@ -53,6 +63,18 @@ export function useCardSearch() {
 
   function retry() {
     runSearch(name, setId, page);
+  }
+
+  // For a consumer that needs to search for a specific name right away (e.g. a
+  // National Dex slot pre-filling "Charizard") — setting `name` alone doesn't
+  // trigger a search (only submitting the form or changing `page` does), and
+  // calling it immediately after setName would still read the pre-update value
+  // due to how state updates apply, so this takes the name directly instead.
+  function searchFor(searchName, searchSet = '') {
+    setName(searchName);
+    setSetId(searchSet);
+    setPage(1);
+    runSearch(searchName, searchSet, 1);
   }
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
@@ -72,6 +94,7 @@ export function useCardSearch() {
     error,
     handleSearchSubmit,
     retry,
+    searchFor,
     pageSize: PAGE_SIZE,
   };
 }

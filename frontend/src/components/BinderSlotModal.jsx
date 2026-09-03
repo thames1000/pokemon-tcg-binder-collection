@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import CardTile from './CardTile.jsx';
 import CardPriceTable from './CardPriceTable.jsx';
@@ -6,24 +6,56 @@ import AddToCollectionForm from './AddToCollectionForm.jsx';
 import { useCardSearch } from '../hooks/useCardSearch.js';
 import { VARIANT_OPTIONS } from '../pricing.js';
 
-export default function BinderSlotModal({ binderId, position, slot, onClose, onChanged }) {
+export default function BinderSlotModal({ binderId, position, slot, dexLabel, onClose, onChanged }) {
   const [mode, setMode] = useState(slot ? 'view' : 'search'); // 'view' | 'search' | 'add-to-collection'
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [variant, setVariant] = useState('');
   const [added, setAdded] = useState(false);
   const [viewCard, setViewCard] = useState(slot?.card || null);
+  const [ownedMatches, setOwnedMatches] = useState(null);
+  const [ownedMatchesLoading, setOwnedMatchesLoading] = useState(false);
 
+  // The hook's own mount-time search is suppressed — we always drive the first
+  // search ourselves below, so a dexLabel that arrives a beat after mount (it's
+  // fetched async in the parent) can't race a generic search and have whichever
+  // one resolves last silently win.
   const {
     name, setName, setId, setSetId, sets, cards, page, setPage,
-    totalCount, totalPages, loading, error: searchError, handleSearchSubmit, retry, pageSize,
-  } = useCardSearch();
+    totalCount, totalPages, loading, error: searchError, handleSearchSubmit, retry, searchFor, pageSize,
+  } = useCardSearch({ skipInitialSearch: true });
 
-  async function place(card) {
+  // For an empty slot with a National Dex label, jump straight to "cards you
+  // already own matching this Pokémon" plus a search pre-filled with its name
+  // — the whole point of the label is not having to figure out what to type.
+  // For a plain empty slot (no label), fall back to the original behavior: an
+  // unfiltered browse-everything search. Re-runs if dexLabel arrives after
+  // mount, so timing can't leave the search box and results out of sync.
+  useEffect(() => {
+    if (slot?.card) return; // view mode already has a card, nothing to search for
+    if (!dexLabel) {
+      searchFor('');
+      return;
+    }
+    searchFor(dexLabel.name);
+    setOwnedMatchesLoading(true);
+    api
+      .searchCollectionByName(dexLabel.name)
+      .then(setOwnedMatches)
+      .catch(() => setOwnedMatches([]))
+      .finally(() => setOwnedMatchesLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dexLabel?.name]);
+
+  async function place(card, placementVariant) {
     setSaving(true);
     setError(null);
     try {
-      await api.setBinderSlot(binderId, position, { cardId: card.id, card, variant: variant || null });
+      await api.setBinderSlot(binderId, position, {
+        cardId: card.id,
+        card,
+        variant: placementVariant !== undefined ? placementVariant : variant || null,
+      });
       onChanged?.();
       onClose();
     } catch (err) {
@@ -145,6 +177,51 @@ export default function BinderSlotModal({ binderId, position, slot, onClose, onC
         {mode === 'search' && (
           <div>
             <h2>{slot?.card ? 'Replace card' : 'Add a card to this slot'}</h2>
+
+            {dexLabel && (
+              <p className="modal-subtitle" style={{ marginTop: 0 }}>
+                National Dex #{dexLabel.number} · {dexLabel.name}
+              </p>
+            )}
+
+            {dexLabel && (
+              <div className="owned-matches">
+                <h3>From your collection</h3>
+                {ownedMatchesLoading && <p className="muted">Checking your collection…</p>}
+                {!ownedMatchesLoading && ownedMatches?.length === 0 && (
+                  <p className="muted">You don't own a "{dexLabel.name}" card yet — search below to plan the slot anyway.</p>
+                )}
+                {!ownedMatchesLoading && ownedMatches?.length > 0 && (
+                  <div className="owned-matches-list">
+                    {ownedMatches.map((item) => (
+                      <button
+                        type="button"
+                        key={item.id}
+                        className="owned-match-row"
+                        onClick={() => place(item.card, item.variant)}
+                        disabled={saving}
+                      >
+                        {item.card?.images?.small && <img src={item.card.images.small} alt={item.card.name} />}
+                        <span className="owned-match-info">
+                          <span className="owned-match-name">{item.card?.name}</span>
+                          <span className="muted">
+                            {item.card?.set?.name} · #{item.card?.number} · {item.variant} · {item.condition}
+                            {item.quantity > 1 && ` · ×${item.quantity}`}
+                          </span>
+                        </span>
+                        <span className="btn-small btn-primary" style={{ pointerEvents: 'none' }}>
+                          Use this
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <p className="muted" style={{ margin: '0.75rem 0 0', fontSize: '0.78rem' }}>
+                  Or search the full library:
+                </p>
+              </div>
+            )}
+
             <form className="search-bar" onSubmit={handleSearchSubmit}>
               <input type="text" placeholder="Search card name…" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
               <select value={setId} onChange={(e) => setSetId(e.target.value)}>

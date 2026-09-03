@@ -84,6 +84,18 @@ router.get('/', (req, res) => {
   res.json(getPricedItems());
 });
 
+// GET /api/collection/search?name=X - owned items whose card name contains the
+// given text (case-insensitive) — e.g. so a National Dex binder slot for
+// "Charizard" can offer up whichever Charizard cards you already own, without
+// digging through the whole collection.
+router.get('/search', (req, res) => {
+  const { name } = req.query;
+  if (!name || !name.trim()) return res.status(400).json({ error: 'name is required' });
+  const needle = name.trim().toLowerCase();
+  const matches = getPricedItems().filter((item) => item.card?.name?.toLowerCase().includes(needle));
+  res.json(matches);
+});
+
 // GET /api/collection/value - collection totals (also records today's value snapshot)
 router.get('/value', (req, res) => {
   const totals = computeTotals(getPricedItems());

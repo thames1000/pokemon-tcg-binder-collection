@@ -59,6 +59,8 @@ export const api = {
   getBinder: (id) => request(`/binders/${id}`),
   getBinderSetPreview: (setId) => request(`/binders/set-preview?setId=${encodeURIComponent(setId)}`),
   getBinderPokemonPreview: (name) => request(`/binders/pokemon-preview?name=${encodeURIComponent(name)}`),
+  getNationalDex: () => request('/binders/national-dex'),
+  searchCollectionByName: (name) => request(`/collection/search?name=${encodeURIComponent(name)}`),
   createBinder: (payload) => request('/binders', { method: 'POST', body: JSON.stringify(payload) }),
   updateBinder: (id, payload) => request(`/binders/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
   deleteBinder: (id) => request(`/binders/${id}`, { method: 'DELETE' }),

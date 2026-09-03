@@ -1,4 +1,4 @@
-export default function BinderSlot({ slot, onClick }) {
+export default function BinderSlot({ slot, dexLabel, onClick }) {
   const card = slot?.card;
   const filledClass = card ? (slot.owned ? 'binder-slot-filled binder-slot-owned-yes' : 'binder-slot-filled binder-slot-owned-no') : 'binder-slot-empty';
   return (
@@ -13,6 +13,11 @@ export default function BinderSlot({ slot, onClick }) {
             </span>
           )}
         </>
+      ) : dexLabel ? (
+        <span className="binder-slot-dex-label">
+          <span className="binder-slot-dex-number">#{dexLabel.number}</span>
+          <span className="binder-slot-dex-name">{dexLabel.name}</span>
+        </span>
       ) : (
         <span className="binder-slot-plus">+</span>
       )}

@@ -23,14 +23,19 @@ no subscription.
   includes a `cardId` column, so re-importing your own export is an exact, lossless round trip.
 - **Binders** — plan where cards go in a physical 9-pocket binder: a 3×3 front + 3×3 back per
   page, either one page at a time or (a toggle, remembered per browser) scrolled continuously
-  through the whole binder. Auto-fill an entire binder three ways: from a set (sorted
+  through the whole binder. Auto-fill an entire binder four ways: from a set (sorted
   by card number), from every card of one Pokémon across every set ever printed (e.g.
   "Charizard" — VMAX/ex/GX/Dark/Shining/tag-team variants and all, sorted oldest-first by
-  release date), or build one manually, slot by slot. Both auto-fill modes share a per-rarity
-  rules checklist — e.g. give Common/Uncommon/Rare 2 slots each (Normal + Reverse Holofoil)
-  while higher rarities get 1 (already a single foil-only print) — and a promo-rarity toggle
-  (excluded by default for a set, included by default for a Pokémon, since promos are often
-  exactly what a Pokémon-focused binder is chasing). Cards you already own show full color;
+  release date), from the full National Dex (#1 Bulbasaur–#1025 Pecharunt, one slot per
+  number — starts completely empty, each unfilled slot just labeled with its number and
+  species so you know exactly where a card goes once you get one, whichever print it
+  happens to be; clicking an empty labeled slot offers up anything you already own matching
+  that name before you go searching), or build one manually, slot by slot. The set and
+  Pokémon auto-fill modes share a per-rarity rules checklist — e.g. give Common/Uncommon/Rare
+  2 slots each (Normal + Reverse Holofoil) while higher rarities get 1 (already a single
+  foil-only print) — and a promo-rarity toggle (excluded by default for a set, included by
+  default for a Pokémon, since promos are often exactly what a Pokémon-focused binder is
+  chasing). Cards you already own show full color;
   cards you don't are darkened/desaturated at a glance (the same convention Holodex uses) —
   click any card to jump straight to "Add to Collection". Ownership matches on the slot's
   planned variant when it has one (e.g. owning the Normal print doesn't light up the
@@ -94,7 +99,10 @@ match, the card just shows "No price data available" — never a fabricated pric
   history builds up from normal use, no separate job required.
 - `binders` / `binder_slots` — a binder is `pageCount` pages × 18 slots (3×3 front + 3×3 back).
   `binder_slots` has one row per *occupied* slot only — position `page*18 + side*9 + (row*3+col)`
-  (side 0=front, 1=back); empty slots simply have no row.
+  (side 0=front, 1=back); empty slots simply have no row. A National Dex binder
+  (`is_national_dex`) is the extreme case of this: every slot starts unoccupied, and the
+  label an empty slot shows is computed from its position against `nationalDex.js`, never
+  stored — nothing is written to `binder_slots` until you actually place a card.
 
 ## API
 
@@ -107,6 +115,7 @@ match, the card just shows "No price data available" — never a fabricated pric
 | GET | `/api/collection/value` | Collection totals (also records today's value snapshot) |
 | GET | `/api/collection/analytics` | Value history, by-set/by-rarity breakdowns, gainers/losers |
 | GET | `/api/collection/export` | Download your collection as CSV |
+| GET | `/api/collection/search?name=` | Owned items whose card name contains the text |
 | POST | `/api/collection/import` | Bulk-add from CSV (body: `{ csv: "..." }`) |
 | POST | `/api/collection` | Add a card to your collection |
 | PATCH | `/api/collection/:id` | Update quantity/condition/variant/notes |
@@ -118,8 +127,9 @@ match, the card just shows "No price data available" — never a fabricated pric
 | GET | `/api/binders` | List binders with fill progress |
 | GET | `/api/binders/set-preview?setId=` | Rarity breakdown for a set (builds the rules checklist) |
 | GET | `/api/binders/pokemon-preview?name=` | Rarity breakdown for every card of one Pokémon |
+| GET | `/api/binders/national-dex` | The full #1–1025 species list, in order |
 | GET | `/api/binders/:id` | One binder with every filled slot, each priced, plus a completion cost estimate |
-| POST | `/api/binders` | Create — `{ name, mode: 'manual', pageCount? }`, `{ name, mode: 'set', setId, excludePromos?, rarityRules? }`, or `{ name, mode: 'pokemon', pokemonName, excludePromos?, rarityRules? }` |
+| POST | `/api/binders` | Create — `{ name, mode: 'manual', pageCount? }`, `{ name, mode: 'set', setId, excludePromos?, rarityRules? }`, `{ name, mode: 'pokemon', pokemonName, excludePromos?, rarityRules? }`, or `{ name, mode: 'dex' }` |
 | PATCH | `/api/binders/:id` | Rename and/or resize (grow/shrink page count) |
 | DELETE | `/api/binders/:id` | Delete a binder |
 | PUT | `/api/binders/:id/slots/:position` | Place/replace a card in one slot |

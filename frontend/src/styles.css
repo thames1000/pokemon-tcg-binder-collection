@@ -1139,6 +1139,28 @@ textarea {
   font-weight: 300;
 }
 
+.binder-slot-dex-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.4rem;
+  text-align: center;
+}
+
+.binder-slot-dex-number {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.binder-slot-dex-name {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.15;
+}
+
 .binder-slot-owned {
   position: absolute;
   bottom: 2px;
@@ -1181,4 +1203,59 @@ textarea {
   font-size: 0.8rem;
   color: var(--text-muted);
   margin-top: 0.75rem;
+}
+
+/* National Dex slot — "from your collection" quick-pick */
+.owned-matches {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.owned-matches h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.9rem;
+}
+
+.owned-matches-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.owned-match-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.4rem 0.6rem;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+}
+
+.owned-match-row:hover {
+  border-color: var(--primary);
+}
+
+.owned-match-row img {
+  width: 32px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.owned-match-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.owned-match-name {
+  font-weight: 600;
+  font-size: 0.85rem;
 }

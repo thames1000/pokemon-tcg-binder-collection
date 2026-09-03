@@ -2,6 +2,7 @@ import { Router } from 'express';
 import db from '../db.js';
 import { searchCards, fetchFromApi, getApiCache, setApiCache } from '../pokemonApi.js';
 import { cardMarketPrice } from '../pricing.js';
+import { NATIONAL_DEX } from '../nationalDex.js';
 
 const router = Router();
 
@@ -129,6 +130,7 @@ function rowToBinder(row) {
     sourceSetId: row.source_set_id,
     sourceSetName: row.source_set_name,
     sourcePokemonName: row.source_pokemon_name,
+    isNationalDex: !!row.is_national_dex,
     pageCount: row.page_count,
     totalSlots: row.page_count * SLOTS_PER_PAGE,
     createdAt: row.created_at,
@@ -247,6 +249,12 @@ router.get('/pokemon-preview', async (req, res) => {
   }
 });
 
+// GET /api/binders/national-dex - the full #1-1025 species list, in order. Fetched
+// once by the frontend and used to label a "dex" binder's empty slots by position.
+router.get('/national-dex', (req, res) => {
+  res.json(NATIONAL_DEX);
+});
+
 // GET /api/binders/:id - full binder with every filled slot (+ whether you own that card)
 router.get('/:id', (req, res) => {
   const binder = db.prepare('SELECT * FROM binders WHERE id = ?').get(req.params.id);
@@ -332,6 +340,17 @@ router.post('/', async (req, res) => {
     } catch (e) {
       res.status(e.status || 500).json({ error: e.message });
     }
+  } else if (mode === 'dex') {
+    // Every slot is reserved for a National Dex number, but starts completely
+    // empty — no cards inserted. Which actual card eventually fills #6 is up to
+    // whatever Charizard print you happen to get; the label is computed from
+    // the slot's position (see GET /national-dex), never stored per-slot.
+    const pages = Math.ceil(NATIONAL_DEX.length / SLOTS_PER_PAGE);
+    const info = db
+      .prepare('INSERT INTO binders (name, page_count, is_national_dex) VALUES (?, ?, 1)')
+      .run(name.trim(), pages);
+    const binder = db.prepare('SELECT * FROM binders WHERE id = ?').get(info.lastInsertRowid);
+    res.status(201).json({ ...rowToBinder(binder), filledSlots: 0 });
   } else {
     const pages = Number.isFinite(Number(pageCount)) && Number(pageCount) > 0 ? Math.floor(Number(pageCount)) : 4;
     const info = db.prepare('INSERT INTO binders (name, page_count) VALUES (?, ?)').run(name.trim(), pages);

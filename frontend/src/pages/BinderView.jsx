@@ -8,26 +8,36 @@ const SLOTS_PER_SIDE = 9;
 const SLOTS_PER_PAGE = SLOTS_PER_SIDE * 2;
 const VIEW_MODE_KEY = 'binderViewMode';
 
-function SideGrid({ label, positions, slotByPosition, onSlotClick }) {
+function dexLabelFor(dexNames, pos) {
+  if (!dexNames || pos >= dexNames.length) return null;
+  return { number: pos + 1, name: dexNames[pos] };
+}
+
+function SideGrid({ label, positions, slotByPosition, dexNames, onSlotClick }) {
   return (
     <div className="binder-side">
       <div className="binder-side-label">{label}</div>
       <div className="binder-side-grid">
         {positions.map((pos) => (
-          <BinderSlot key={pos} slot={slotByPosition.get(pos) || null} onClick={() => onSlotClick(pos)} />
+          <BinderSlot
+            key={pos}
+            slot={slotByPosition.get(pos) || null}
+            dexLabel={dexLabelFor(dexNames, pos)}
+            onClick={() => onSlotClick(pos)}
+          />
         ))}
       </div>
     </div>
   );
 }
 
-function PageSpread({ pageNumber, positions: { frontPositions, backPositions }, slotByPosition, onSlotClick, showLabel }) {
+function PageSpread({ pageNumber, positions: { frontPositions, backPositions }, slotByPosition, dexNames, onSlotClick, showLabel }) {
   return (
     <div className="binder-spread-wrap">
       {showLabel && <div className="binder-scroll-page-label">Page {pageNumber}</div>}
       <div className="binder-spread">
-        <SideGrid label="Front" positions={frontPositions} slotByPosition={slotByPosition} onSlotClick={onSlotClick} />
-        <SideGrid label="Back" positions={backPositions} slotByPosition={slotByPosition} onSlotClick={onSlotClick} />
+        <SideGrid label="Front" positions={frontPositions} slotByPosition={slotByPosition} dexNames={dexNames} onSlotClick={onSlotClick} />
+        <SideGrid label="Back" positions={backPositions} slotByPosition={slotByPosition} dexNames={dexNames} onSlotClick={onSlotClick} />
       </div>
     </div>
   );
@@ -52,6 +62,7 @@ export default function BinderView() {
   const [renaming, setRenaming] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
   const [addingPage, setAddingPage] = useState(false);
+  const [dexNames, setDexNames] = useState(null);
   const [viewMode, setViewMode] = useState(() => {
     try {
       return localStorage.getItem(VIEW_MODE_KEY) || 'page';
@@ -75,6 +86,13 @@ export default function BinderView() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (binder?.isNationalDex && !dexNames) {
+      api.getNationalDex().then(setDexNames).catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [binder?.isNationalDex]);
 
   const slotByPosition = useMemo(() => {
     const map = new Map();
@@ -151,6 +169,7 @@ export default function BinderView() {
       <p className="page-subtitle">
         {binder.sourceSetName ? `${binder.sourceSetName} · ` : ''}
         {binder.sourcePokemonName ? `Every ${binder.sourcePokemonName} card · ` : ''}
+        {binder.isNationalDex ? 'National Dex · ' : ''}
         {binder.slots.length}/{binder.totalSlots} slots planned ·{' '}
         <span className={ownedCount > 0 ? 'success-text' : ''}>
           {ownedCount} owned ({ownedPct}%)
@@ -208,6 +227,7 @@ export default function BinderView() {
           pageNumber={pageIndex + 1}
           positions={pagePositions(pageIndex)}
           slotByPosition={slotByPosition}
+          dexNames={dexNames}
           onSlotClick={setActiveSlotPos}
           showLabel={false}
         />
@@ -219,6 +239,7 @@ export default function BinderView() {
               pageNumber={i + 1}
               positions={pagePositions(i)}
               slotByPosition={slotByPosition}
+              dexNames={dexNames}
               onSlotClick={setActiveSlotPos}
               showLabel
             />
@@ -231,6 +252,7 @@ export default function BinderView() {
           binderId={id}
           position={activeSlotPos}
           slot={slotByPosition.get(activeSlotPos) || null}
+          dexLabel={dexLabelFor(dexNames, activeSlotPos)}
           onClose={() => setActiveSlotPos(null)}
           onChanged={load}
         />
