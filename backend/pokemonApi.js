@@ -5,29 +5,10 @@ import { bestGuessPrice } from './pricing.js';
 const API_BASE = 'https://api.pokemontcg.io/v2';
 const CACHE_TTL_HOURS = 12;
 
-// Natural sort for printed card numbers ("1" < "2" < "10", "TG01" < "TG02",
-// etc.) — a plain string/SQL sort would put "10" before "2", so this can't be
-// expressed as a SQL ORDER BY; used to sort an already-fetched row set in JS.
-export function compareCardNumbers(a, b) {
-  const split = (s) => String(s ?? '').match(/(\d+|\D+)/g) || [];
-  const aParts = split(a);
-  const bParts = split(b);
-  const len = Math.max(aParts.length, bParts.length);
-  for (let i = 0; i < len; i++) {
-    const ap = aParts[i] ?? '';
-    const bp = bParts[i] ?? '';
-    const aNum = /^\d+$/.test(ap);
-    const bNum = /^\d+$/.test(bp);
-    if (aNum && bNum) {
-      const diff = Number(ap) - Number(bp);
-      if (diff !== 0) return diff;
-    } else {
-      const cmp = ap.localeCompare(bp);
-      if (cmp !== 0) return cmp;
-    }
-  }
-  return 0;
-}
+// compareCardNumbers moved to cardNumbers.js (dependency-free, so the
+// simulator can import it too); re-exported here for existing importers.
+export { compareCardNumbers } from './cardNumbers.js';
+import { compareCardNumbers } from './cardNumbers.js';
 
 function apiHeaders() {
   const headers = {};

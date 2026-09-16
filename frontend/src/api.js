@@ -1,10 +1,18 @@
 const BASE = '/api';
 
+// Registered by App: any 401 means the session ended (expiry, admin password
+// reset, deleted account) and the shell should fall back to the login screen.
+let unauthorizedHandler = null;
+export function onUnauthorized(handler) {
+  unauthorizedHandler = handler;
+}
+
 async function request(path, options) {
   const res = await fetch(`${BASE}${path}`, {
     headers: { 'Content-Type': 'application/json' },
     ...options,
   });
+  if (res.status === 401 && unauthorizedHandler) unauthorizedHandler();
   if (!res.ok) {
     let message = `Request failed (${res.status})`;
     try {
@@ -20,6 +28,32 @@ async function request(path, options) {
 }
 
 export const api = {
+  auth: {
+    me: () => request('/auth/me'),
+    setup: (username, password) => request('/auth/setup', { method: 'POST', body: JSON.stringify({ username, password }) }),
+    login: (username, password) => request('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) }),
+    logout: () => request('/auth/logout', { method: 'POST' }),
+    changePassword: (currentPassword, newPassword) => request('/auth/password', { method: 'POST', body: JSON.stringify({ currentPassword, newPassword }) }),
+    listUsers: () => request('/auth/users'),
+    createUser: (payload) => request('/auth/users', { method: 'POST', body: JSON.stringify(payload) }),
+    updateUser: (id, payload) => request(`/auth/users/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+    deleteUser: (id) => request(`/auth/users/${id}`, { method: 'DELETE' }),
+  },
+  simulator: {
+    state: () => request('/simulator'),
+    grantCredits: (cents, key) => request('/simulator/credits', { method: 'POST', body: JSON.stringify({ cents, key }) }),
+    market: (params) => request(`/simulator/market?${new URLSearchParams(params)}`),
+    prepare: (setId) => request('/simulator/prepare', { method: 'POST', body: JSON.stringify({ setId }) }),
+    buyPack: (setId, expectedCents, key) => request('/simulator/packs/buy', { method: 'POST', body: JSON.stringify({ setId, expectedCents, key }) }),
+    openPack: (setId, key) => request('/simulator/packs/open', { method: 'POST', body: JSON.stringify({ setId, key }) }),
+    reveal: (id, payload) => request(`/simulator/packs/${id}/reveal`, { method: 'POST', body: JSON.stringify(payload) }),
+    daily: (key) => request('/simulator/daily', { method: 'POST', body: JSON.stringify({ key }) }),
+    trade: (payload) => request('/simulator/trade', { method: 'POST', body: JSON.stringify(payload) }),
+    createBinder: (payload) => request('/simulator/binders', { method: 'POST', body: JSON.stringify(payload) }),
+    binder: (id) => request(`/simulator/binders/${id}`),
+    place: (id, position, placement) => request(`/simulator/binders/${id}/slots/${position}`, { method: 'PUT', body: JSON.stringify(placement || {}) }),
+    deleteBinder: (id) => request(`/simulator/binders/${id}`, { method: 'DELETE' }),
+  },
   searchCards: ({ name, set, sortBy, page = 1, pageSize = 32 }) => {
     const params = new URLSearchParams();
     if (name) params.set('name', name);

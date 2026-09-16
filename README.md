@@ -83,6 +83,33 @@ npm run dev              # http://localhost:5173
 
 Open http://localhost:5173. The Vite dev server proxies `/api` calls to the backend.
 
+## Accounts & roles
+
+The app requires signing in. On first launch (no users yet) the app shows a
+one-time setup screen; the account created there becomes the **admin**. Admins
+manage accounts on the **Users** page (create users as `admin` or `user`,
+change roles, reset passwords, delete accounts) and get an admin-only
+"Adjust credits" testing tool in the simulator's Bank activity tab (each grant
+is ledgered with the granting admin's name). Anyone can change their own
+password from the navbar; doing so signs out their other devices.
+
+All signed-in users share the same collection, wishlist, binders and simulator
+data — roles gate actions, they do not give each user a separate collection.
+A "regular user" is not read-only: they can edit the collection and spend the
+shared simulator bank; only user management and credit grants are admin-only.
+Sessions are 30-day httpOnly cookies backed by SQLite; passwords are stored as
+scrypt hashes. Set `COOKIE_SECURE=1` in `backend/.env` when serving over HTTPS.
+A burst of failed sign-ins briefly refuses all new logins (about 30 seconds);
+already-signed-in sessions keep working throughout.
+
+**Deployment notes:** the backend binds `127.0.0.1` by default; set
+`HOST=0.0.0.0` to expose it beyond the machine. `/api/auth/setup` is open until
+the first account exists, so complete setup before exposing a fresh instance —
+it is claimable by whoever reaches it first. CSRF protection relies on the
+`SameSite=Lax` session cookie (all mutations are non-GET); note that other apps
+served from other ports on the same hostname count as same-site, so don't run
+untrusted apps on the same host name as this one.
+
 ### Getting an API key (recommended)
 
 The app works with no key, but pokemontcg.io's unauthenticated tier has a low rate limit and
@@ -171,8 +198,15 @@ specific card regardless of mode.
 
 ## API
 
+All endpoints except `/api/health` and the `/api/auth` sign-in routes require a
+session cookie (sign in through the UI).
+
 | Method | Path | Description |
 |---|---|---|
+| GET | `/api/auth/me` | Current user (or whether first-run setup is needed) |
+| POST | `/api/auth/setup` \| `/login` \| `/logout` | First-run admin creation, sign in, sign out |
+| GET/POST/PATCH/DELETE | `/api/auth/users[/:id]` | Admin-only user management |
+| POST | `/api/simulator/credits` | Admin-only: adjust simulator credits (testing) |
 | GET | `/api/cards/search?name=&set=&page=&pageSize=&sortBy=` | Search the card library — cache-first, see "Cache-first search" above. `sortBy`: `name-asc` (default) \| `name-desc` \| `number` \| `price-desc` \| `price-asc` |
 | GET | `/api/cards/sets` | List all sets (for the filter dropdown) |
 | GET | `/api/cards/sync-status` | How many cards are cached locally, and progress of the last `npm run sync-cards` |

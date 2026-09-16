@@ -6,7 +6,7 @@ export default function BinderSlot({ slot, dexLabel, highlighted, onClick }) {
     <button type="button" className={`binder-slot ${filledClass}${highlightClass}`} onClick={onClick}>
       {card ? (
         <>
-          <img src={card.images?.small} alt={card.name} className="binder-slot-image" loading="lazy" />
+          {card.images?.small ? <img src={card.images.small} alt={card.name} className="binder-slot-image" loading="lazy" /> : <span className="binder-slot-dex-label">{card.name}</span>}
           {slot.variant && <span className="binder-slot-variant">{slot.variant === 'Reverse Holofoil' ? 'RH' : slot.variant}</span>}
           {slot.owned && (
             <span className="binder-slot-owned" title="In your collection">
